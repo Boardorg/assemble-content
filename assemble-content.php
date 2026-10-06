@@ -1,15 +1,19 @@
 <?php
 /**
- * Plugin Name:       Assemble Field Reports (Contentful)
- * Description:       Syncs Field Reports from Contentful into a gated custom post type. Webhook-driven, with WP-CLI commands and per-audience rendering.
+ * Plugin Name:       Assemble Content
+ * Description:       The Assemble Content feed. Syncs published Contentful entries (Field Reports today) into hidden, gated post types. Webhook-driven, with WP-CLI commands and per-audience rendering.
  * Version:           1.0.0
  * Requires PHP:      8.0
  * Author:            Assemble
- * Text Domain:       assemble-field-reports
+ * Text Domain:       assemble-content
  *
  * Reads from the Contentful Delivery API only — the token stored here cannot write
  * to Contentful. Contentful is the source of truth; anything this plugin writes into
- * WordPress is disposable and can be rebuilt with `wp field-report sync --all`.
+ * WordPress is disposable and can be rebuilt with `wp assemble-content sync --all`.
+ *
+ * Formerly `assemble-field-reports`. Internal names (afr_* options, filters and meta,
+ * AFR_* classes) are unchanged on purpose, so the switch-over needs no data migration.
+ * Never activate this alongside assemble-field-reports: the class names collide.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -42,6 +46,8 @@ AFR_Settings::init();
 
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
 	require_once AFR_DIR . 'includes/class-afr-cli.php';
+	WP_CLI::add_command( 'assemble-content', 'AFR_CLI' );
+	// Old name, kept as an alias until launch.
 	WP_CLI::add_command( 'field-report', 'AFR_CLI' );
 }
 

@@ -233,7 +233,7 @@ class AFR_Engagement {
 			. '<p class="afr-gate-lock">Read the full report</p>'
 			. '<h5 class="afr-gate-title">' . sprintf(
 				/* translators: %s: community name, with article where it reads naturally */
-				esc_html__( 'Join the Assemble network to read this report in full — and the rest of our peer intelligence from %s.', 'assemble-field-reports' ),
+				esc_html__( 'Join the Assemble network to read this report in full — and the rest of our peer intelligence from %s.', 'assemble-content' ),
 				esc_html( $community )
 			) . '</h5>'
 			. ( $join ? self::button( $join, 'Join the Assemble network', '', true ) : '' )
