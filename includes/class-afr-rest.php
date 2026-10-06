@@ -21,9 +21,6 @@ class AFR_REST {
 	private const SECRET_HEADER = 'X-AFR-Secret';
 	private const LOCK_KEY      = 'afr_webhook_lock';
 
-	/** Entry types that, when changed, require re-rendering the reports citing them. */
-	private const DEPENDENCY_TYPES = [ 'mdTake', 'person', 'community' ];
-
 	public static function init(): void {
 		add_action( 'rest_api_init', [ self::class, 'register_routes' ] );
 	}
@@ -95,7 +92,9 @@ class AFR_REST {
 
 		// Assets have no content type; a changed chart or headshot affects every
 		// report that embeds it, so treat it like a dependency change.
-		$is_dependency = in_array( $content_type, self::DEPENDENCY_TYPES, true ) || $type === 'Asset';
+		// Which types are dependencies comes from the registry (e.g. a changed `person`
+		// re-renders every Field Report that cites them).
+		$is_dependency = in_array( $content_type, AFR_Types::dependency_types(), true ) || $type === 'Asset';
 
 		if ( $content_type === 'siteFeature' ) {
 			// Site Features live in one option, so there is no per-entry path —
@@ -115,7 +114,7 @@ class AFR_REST {
 			);
 		}
 
-		if ( $content_type === 'fieldReport' ) {
+		if ( AFR_Types::get( $content_type ) ) {
 			$result = AFR_Sync::sync_one( $entry_id, true, 'webhook: ' . ( $topic ?: 'unknown' ) );
 			$scope  = 'entry';
 		} elseif ( $is_dependency ) {

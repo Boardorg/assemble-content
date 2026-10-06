@@ -82,11 +82,14 @@ class AFR_Settings {
 
 	// ---------------------------------------------------------------- admin UI
 
+	/**
+	 * The only wp-admin surface: Settings → Assemble Content. Synced post types
+	 * have no admin screens, because Contentful is the only place to edit them.
+	 */
 	public static function add_menu(): void {
-		add_submenu_page(
-			'edit.php?post_type=' . AFR_CPT::POST_TYPE,
-			'Contentful Sync',
-			'Contentful Sync',
+		add_options_page(
+			'Assemble Content',
+			'Assemble Content',
 			'manage_options',
 			'afr-settings',
 			[ self::class, 'render_page' ]
@@ -134,19 +137,28 @@ class AFR_Settings {
 		}
 
 		$s        = self::all();
-		$counts   = wp_count_posts( AFR_CPT::POST_TYPE );
 		$last     = get_option( 'afr_last_sync', [] );
 		$hook_url = AFR_REST::webhook_url();
 		?>
 		<div class="wrap">
-			<h1>Field Reports &mdash; Contentful Sync</h1>
+			<h1>Assemble Content</h1>
+			<p>Published Contentful entries are copied here as a hidden, read-only cache. Edit content in
+				<a href="<?php echo esc_url( sprintf( 'https://app.contentful.com/spaces/%s/environments/%s/entries', rawurlencode( $s['space_id'] ), rawurlencode( $s['environment'] ) ) ); ?>" target="_blank" rel="noopener">Contentful</a>;
+				changes made in WordPress would be overwritten on the next sync.</p>
 
 			<h2>Status</h2>
 			<table class="widefat striped" style="max-width:820px">
 				<tbody>
 				<tr><th style="width:220px">Configured</th><td><?php echo self::is_configured() ? '&#10003; yes' : '&#10007; missing space ID or delivery token'; ?></td></tr>
 				<tr><th>Space / environment</th><td><code><?php echo esc_html( $s['space_id'] ?: '—' ); ?></code> / <code><?php echo esc_html( $s['environment'] ); ?></code></td></tr>
-				<tr><th>Published reports</th><td><?php echo (int) ( $counts->publish ?? 0 ); ?> published, <?php echo (int) ( $counts->draft ?? 0 ); ?> draft</td></tr>
+				<?php foreach ( AFR_Types::all() as $content_type => $type ) : ?>
+					<?php $counts = wp_count_posts( $type['post_type'] ); ?>
+					<tr><th><?php echo esc_html( $type['label'] ); ?></th><td>
+						<?php echo (int) ( $counts->publish ?? 0 ); ?> published, <?php echo (int) ( $counts->draft ?? 0 ); ?> draft
+						&mdash; <code><?php echo esc_html( $content_type ); ?></code> &rarr; <code><?php echo esc_html( $type['post_type'] ); ?></code>,
+						<a href="<?php echo esc_url( (string) get_post_type_archive_link( $type['post_type'] ) ); ?>">view archive</a>
+					</td></tr>
+				<?php endforeach; ?>
 				<tr><th>Last sync</th><td>
 					<?php if ( empty( $last ) ) : ?>
 						never
@@ -252,9 +264,12 @@ wp option update <?php echo esc_html( AFR_Bypass::OPTION_MODE ); ?> off</pre></t
 
 			<h2>Sync</h2>
 			<p>Run from the command line:</p>
-			<pre style="background:#f6f7f7;padding:12px;max-width:820px">wp field-report sync --all
-wp field-report status
-wp field-report audiences</pre>
+			<pre style="background:#f6f7f7;padding:12px;max-width:820px">wp assemble-content sync --all
+wp assemble-content sync --type=fieldReport
+wp assemble-content sync --all --dry-run
+wp assemble-content status
+wp assemble-content types
+wp assemble-content audiences</pre>
 		</div>
 		<?php
 	}

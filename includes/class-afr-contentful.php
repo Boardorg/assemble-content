@@ -15,20 +15,104 @@ class AFR_Contentful {
 	private const MAX_DEPTH  = 4;
 	private const TIMEOUT    = 20;
 
+	/** Hard stop for paging: 100 pages of 100 is the Free plan's 10K-record ceiling. */
+	private const MAX_PAGES  = 100;
+
+	/**
+	 * Fetch every published entry of one content type, page by page.
+	 *
+	 * `complete` is true only when every page arrived and the number of items
+	 * matches the `total` Contentful reported. Callers must not treat anything
+	 * missing from an incomplete fetch as unpublished: that is how a sync would
+	 * draft live content after one bad page (handoff §10.1).
+	 *
+	 * Order by something immutable (the default, `sys.id`). Ordering by
+	 * `sys.updatedAt` lets an entry edited mid-fetch jump pages, so one entry is
+	 * read twice and another never: the count still matches, the set does not.
+	 * Items are de-duplicated by ID and only unique IDs count towards `total`.
+	 *
+	 * @param array<string,string|int> $extra Additional CDA query args.
+	 * @return array{items: array<int,array>, error: string, total: int, complete: bool, pages: int}
+	 */
+	public static function get_all( string $content_type, int $include = 2, int $page_size = 100, string $order = 'sys.id', array $extra = [] ): array {
+		$page_size = max( 1, min( 1000, $page_size ) );
+		$items     = [];
+		$fetched   = 0;
+		$total     = 0;
+		$pages     = 0;
+
+		do {
+			$page = self::get_entries(
+				array_merge(
+					$extra,
+					[
+						'content_type' => $content_type,
+						'include'      => $include,
+						'limit'        => $page_size,
+						'skip'         => $fetched,
+						'order'        => $order,
+					]
+				)
+			);
+			$pages++;
+
+			if ( $page['error'] !== '' ) {
+				return [
+					'items'    => array_values( $items ),
+					'error'    => sprintf( '%s (page %d)', $page['error'], $pages ),
+					'total'    => $total,
+					'complete' => false,
+					'pages'    => $pages,
+				];
+			}
+
+			$total    = $page['total'];
+			$fetched += count( $page['items'] );
+
+			foreach ( $page['items'] as $item ) {
+				$id = (string) ( $item['sys']['id'] ?? '' );
+				if ( $id !== '' ) {
+					$items[ $id ] = $item;
+				}
+			}
+
+			// A short or empty page ends the walk even if `total` says otherwise.
+			$more = count( $page['items'] ) === $page_size && $fetched < $total;
+		} while ( $more && $pages < self::MAX_PAGES );
+
+		$complete = count( $items ) === $total;
+
+		return [
+			'items'    => array_values( $items ),
+			'error'    => $complete ? '' : sprintf( 'Incomplete fetch of %s: got %d of %d entries.', $content_type, count( $items ), $total ),
+			'total'    => $total,
+			'complete' => $complete,
+			'pages'    => $pages,
+		];
+	}
+
+	/**
+	 * Fetch every published entry of a registered type, using its registry settings.
+	 *
+	 * @return array{items: array<int,array>, error: string, total: int, complete: bool, pages: int}
+	 */
+	public static function get_type( string $content_type ): array {
+		$type = AFR_Types::get( $content_type );
+
+		if ( ! $type ) {
+			return [ 'items' => [], 'error' => sprintf( 'Content type %s is not registered.', $content_type ), 'total' => 0, 'complete' => false, 'pages' => 0 ];
+		}
+
+		return self::get_all( $content_type, (int) $type['include'], (int) $type['page_size'], (string) $type['order'] );
+	}
+
 	/**
 	 * Fetch every published Field Report, links resolved.
 	 *
-	 * @return array{items: array<int,array>, error: string}
+	 * @return array{items: array<int,array>, error: string, total: int, complete: bool, pages: int}
 	 */
 	public static function get_field_reports(): array {
-		return self::get_entries(
-			[
-				'content_type' => 'fieldReport',
-				'include'      => 3,
-				'limit'        => 100,
-				'order'        => '-sys.updatedAt',
-			]
-		);
+		return self::get_type( 'fieldReport' );
 	}
 
 	/**
@@ -37,17 +121,10 @@ class AFR_Contentful {
 	 * include=0: Site Features carry no entry or asset links, so there is nothing
 	 * to resolve and no reason to make the CDA assemble an includes block.
 	 *
-	 * @return array{items: array<int,array>, error: string}
+	 * @return array{items: array<int,array>, error: string, total: int, complete: bool, pages: int}
 	 */
 	public static function get_site_features(): array {
-		return self::get_entries(
-			[
-				'content_type' => 'siteFeature',
-				'include'      => 0,
-				'limit'        => 50,
-				'order'        => 'fields.rank',
-			]
-		);
+		return self::get_all( 'siteFeature', 0, 100, 'fields.rank,sys.id' );
 	}
 
 	/** Fetch one entry by ID, links resolved. Returns null when absent. */

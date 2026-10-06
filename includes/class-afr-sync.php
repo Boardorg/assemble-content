@@ -2,6 +2,9 @@
 /**
  * Contentful -> WordPress sync.
  *
+ * Which Contentful types are synced, and how each maps onto a post, comes from
+ * the AFR_Types registry; this class is the same for every type.
+ *
  * Posts are matched to entries by the `_afr_entry_id` meta key, never by slug, so
  * renaming a headline in Contentful updates the existing post instead of orphaning
  * it. Nothing is ever deleted: an unpublished or removed entry moves its post to
@@ -13,21 +16,55 @@ defined( 'ABSPATH' ) || exit;
 class AFR_Sync {
 
 	/**
-	 * Sync every published Field Report.
+	 * Sync every registered content type, or just one.
 	 *
+	 * Each type is fetched in full and its orphans drafted only when that fetch
+	 * was complete. A failed or partial fetch of one type never drafts anything,
+	 * and a sync of one type never touches another type's posts.
+	 *
+	 * @param string $only_type Contentful content type ID; '' syncs every type plus Site Features.
 	 * @return array{created:int,updated:int,unchanged:int,drafted:int,errors:int,messages:string[]}
 	 */
-	public static function sync_all( bool $force = false, string $trigger = 'manual' ): array {
+	public static function sync_all( bool $force = false, string $trigger = 'manual', string $only_type = '' ): array {
 		$result = self::blank_result();
-		$fetch  = AFR_Contentful::get_field_reports();
+		$types  = AFR_Types::all();
 
-		if ( $fetch['error'] !== '' ) {
-			$result['errors']     = 1;
-			$result['messages'][] = $fetch['error'];
-			self::record( $result, $trigger );
+		if ( $only_type !== '' ) {
+			if ( ! isset( $types[ $only_type ] ) ) {
+				$result['errors']     = 1;
+				$result['messages'][] = sprintf( 'content type %s is not registered', $only_type );
+				self::record( $result, $trigger );
 
-			return $result;
+				return $result;
+			}
+
+			$types = [ $only_type => $types[ $only_type ] ];
 		}
+
+		foreach ( $types as $content_type => $type ) {
+			self::sync_type( (string) $content_type, $type, $force, $result );
+		}
+
+		// Site Features ride along with a full sync so `wp assemble-content sync --all`
+		// rebuilds the entire website surface, not just the post types.
+		if ( $only_type === '' ) {
+			$features = AFR_Features::sync();
+			if ( $features['error'] !== '' ) {
+				$result['errors']++;
+				$result['messages'][] = 'site features: ' . $features['error'];
+			} else {
+				$result['messages'][] = sprintf( 'site features: %d cached', $features['count'] );
+			}
+		}
+
+		self::record( $result, $trigger );
+
+		return $result;
+	}
+
+	/** Fetch, upsert and orphan-draft one registered type. Adds to $result. */
+	private static function sync_type( string $content_type, array $type, bool $force, array &$result ): void {
+		$fetch = AFR_Contentful::get_type( $content_type );
 
 		$seen = [];
 		foreach ( $fetch['items'] as $entry ) {
@@ -35,31 +72,29 @@ class AFR_Sync {
 			$result[ $outcome['status'] ] = ( $result[ $outcome['status'] ] ?? 0 ) + 1;
 			$result['messages'][]         = $outcome['message'];
 
+			// Entries that fail to save still count as seen, so they aren't drafted.
 			if ( ! empty( $outcome['entry_id'] ) ) {
 				$seen[] = $outcome['entry_id'];
 			}
 		}
 
-		// Site Features ride along with a full sync so `wp field-report sync --all`
-		// rebuilds the entire website surface, not just the reports.
-		$features = AFR_Features::sync();
-		if ( $features['error'] !== '' ) {
+		if ( ! $fetch['complete'] ) {
 			$result['errors']++;
-			$result['messages'][] = 'site features: ' . $features['error'];
-		} else {
-			$result['messages'][] = sprintf( 'site features: %d cached', $features['count'] );
+			$result['messages'][] = sprintf(
+				'%s: %s Orphan drafting skipped, so nothing was drafted.',
+				$content_type,
+				$fetch['error'] !== '' ? $fetch['error'] : 'incomplete fetch.'
+			);
+
+			return;
 		}
 
 		// Anything in WP that Contentful no longer publishes gets drafted, not deleted.
-		foreach ( self::orphans( $seen ) as $post_id ) {
+		foreach ( self::orphans( (string) $type['post_type'], $seen ) as $post_id ) {
 			self::draft_post( (int) $post_id, 'no longer published in Contentful' );
 			$result['drafted']++;
 			$result['messages'][] = sprintf( 'drafted #%d (no longer published in Contentful)', $post_id );
 		}
-
-		self::record( $result, $trigger );
-
-		return $result;
 	}
 
 	/** Sync a single entry by Contentful ID. */
@@ -95,28 +130,32 @@ class AFR_Sync {
 	}
 
 	/**
-	 * Map one resolved entry onto a post.
+	 * Map one resolved entry onto a post, using its type's registry entry.
 	 *
 	 * @return array{status:string,message:string,post_id:int,entry_id:string}
 	 */
 	private static function sync_entry( array $entry, bool $force ): array {
-		$entry_id = (string) ( $entry['sys']['id'] ?? '' );
-		$headline = (string) ( AFR_Contentful::field( $entry, 'headline' ) ?? '' );
+		$entry_id     = (string) ( $entry['sys']['id'] ?? '' );
+		$content_type = (string) ( $entry['sys']['contentType']['sys']['id'] ?? '' );
+		$type         = AFR_Types::get( $content_type );
 
-		if ( $entry_id === '' || $headline === '' ) {
+		if ( ! $type ) {
 			return [
 				'status'   => 'errors',
-				'message'  => sprintf( 'skipped %s: missing sys.id or headline', $entry_id ?: '(unknown)' ),
+				'message'  => sprintf( 'skipped %s: content type %s is not synced on this site', $entry_id ?: '(unknown)', $content_type ?: 'unknown' ),
 				'post_id'  => 0,
 				'entry_id' => $entry_id,
 			];
 		}
 
-		$content_type = (string) ( $entry['sys']['contentType']['sys']['id'] ?? '' );
-		if ( $content_type !== 'fieldReport' ) {
+		$mapped = (array) call_user_func( $type['map'], $entry );
+		$fields = (array) ( $mapped['post'] ?? [] );
+		$meta   = (array) ( $mapped['meta'] ?? [] );
+
+		if ( $entry_id === '' || (string) ( $fields['post_title'] ?? '' ) === '' ) {
 			return [
 				'status'   => 'errors',
-				'message'  => sprintf( 'skipped %s: content type is %s, not fieldReport', $entry_id, $content_type ?: 'unknown' ),
+				'message'  => sprintf( 'skipped %s: missing sys.id or title', $entry_id ?: '(unknown)' ),
 				'post_id'  => 0,
 				'entry_id' => $entry_id,
 			];
@@ -140,17 +179,13 @@ class AFR_Sync {
 			}
 		}
 
-		$postarr = [
-			'post_type'    => AFR_CPT::POST_TYPE,
-			'post_status'  => 'publish',
-			'post_title'   => $headline,
-			'post_name'    => sanitize_title( (string) ( AFR_Contentful::field( $entry, 'slug' ) ?? $headline ) ),
-			// A rendered copy so search, Yoast and excerpts have something to read.
-			// Display always re-renders per audience, so this is never served raw.
-			'post_content' => AFR_Renderer::render_report( $entry ),
-			'post_excerpt' => self::excerpt( $entry ),
-			'post_date'    => self::post_date( $entry ),
-		];
+		$postarr = array_merge(
+			$fields,
+			[
+				'post_type'   => $type['post_type'],
+				'post_status' => 'publish',
+			]
+		);
 
 		if ( $post_id ) {
 			$postarr['ID'] = $post_id;
@@ -172,25 +207,20 @@ class AFR_Sync {
 
 		$post_id = (int) $saved;
 
+		// Bookkeeping every synced type shares.
 		update_post_meta( $post_id, AFR_CPT::META_ENTRY_ID, $entry_id );
 		update_post_meta( $post_id, AFR_CPT::META_REVISION, $revision );
 		update_post_meta( $post_id, AFR_CPT::META_UPDATED_AT, $updated );
 		update_post_meta( $post_id, AFR_CPT::META_DATA, wp_slash( wp_json_encode( $entry ) ) );
-		update_post_meta( $post_id, AFR_CPT::META_AUDIENCES, (array) ( AFR_Contentful::field( $entry, 'availableTo', [] ) ) );
-		update_post_meta( $post_id, AFR_CPT::META_SOURCE, (string) ( AFR_Contentful::field( $entry, 'sourceLine' ) ?? '' ) );
-		update_post_meta( $post_id, AFR_CPT::META_PULLQUOTE, (string) ( AFR_Contentful::field( $entry, 'pullquote' ) ?? '' ) );
-		update_post_meta( $post_id, AFR_CPT::META_SHORT, (string) ( AFR_Contentful::field( $entry, 'takeawaysShort' ) ?? '' ) );
 		update_post_meta( $post_id, AFR_CPT::META_SYNCED_AT, current_time( 'mysql' ) );
 
-		// Promotion. Always written, never deleted — see the note on META_FEATURED.
-		$featured = (bool) AFR_Contentful::field( $entry, 'featured', false );
-		$rank     = AFR_Contentful::field( $entry, 'featuredRank' );
-		update_post_meta( $post_id, AFR_CPT::META_FEATURED, $featured ? '1' : '0' );
-		// Unranked featured reports sort behind every ranked one, so an editor who
-		// ticks the box without picking a number still gets sensible order.
-		update_post_meta( $post_id, AFR_CPT::META_FEATURED_RANK, null === $rank ? 99 : (int) $rank );
+		foreach ( $meta as $key => $value ) {
+			update_post_meta( $post_id, (string) $key, $value );
+		}
 
-		self::apply_communities( $post_id, $entry );
+		if ( is_callable( $type['after_save'] ) ) {
+			call_user_func( $type['after_save'], $post_id, $entry );
+		}
 
 		return [
 			'status'   => $status,
@@ -200,82 +230,17 @@ class AFR_Sync {
 		];
 	}
 
-	/** Primary + additional communities become terms in the community taxonomy. */
-	private static function apply_communities( int $post_id, array $entry ): void {
-		$communities = [];
-
-		$primary = AFR_Contentful::field( $entry, 'primaryCommunity' );
-		if ( is_array( $primary ) ) {
-			$communities[] = $primary;
-		}
-
-		foreach ( (array) AFR_Contentful::field( $entry, 'additionalCommunities', [] ) as $extra ) {
-			if ( is_array( $extra ) ) {
-				$communities[] = $extra;
-			}
-		}
-
-		$term_ids = [];
-		foreach ( $communities as $community ) {
-			$name = (string) ( AFR_Contentful::field( $community, 'name' ) ?? '' );
-			if ( $name === '' ) {
-				continue;
-			}
-
-			$slug = sanitize_title( (string) ( AFR_Contentful::field( $community, 'slug' ) ?? $name ) );
-			$term = get_term_by( 'slug', $slug, AFR_CPT::TAXONOMY );
-
-			if ( ! $term ) {
-				$created = wp_insert_term( $name, AFR_CPT::TAXONOMY, [ 'slug' => $slug ] );
-				if ( is_wp_error( $created ) ) {
-					continue;
-				}
-				$term_ids[] = (int) $created['term_id'];
-				continue;
-			}
-
-			$term_ids[] = (int) $term->term_id;
-		}
-
-		wp_set_object_terms( $post_id, $term_ids, AFR_CPT::TAXONOMY, false );
-	}
-
-	private static function excerpt( array $entry ): string {
-		$setup = trim( (string) ( AFR_Contentful::field( $entry, 'newsletterSetup' ) ?? '' ) );
-
-		if ( $setup !== '' ) {
-			return $setup;
-		}
-
-		return wp_trim_words( AFR_RichText::to_text( AFR_Contentful::field( $entry, 'pickingUpBody' ) ), 40 );
-	}
-
-	/**
-	 * Date the report from its source line where possible — a report about a
-	 * 2026-06-16 discussion should not be dated by when it was synced.
-	 */
-	private static function post_date( array $entry ): string {
-		$source = (string) ( AFR_Contentful::field( $entry, 'sourceLine' ) ?? '' );
-
-		if ( preg_match( '/\b([A-Z][a-z]+ \d{1,2},? \d{4})\b/', $source, $m ) ) {
-			$ts = strtotime( $m[1] );
-			if ( $ts ) {
-				return gmdate( 'Y-m-d H:i:s', $ts );
-			}
-		}
-
-		$created = (string) ( $entry['sys']['createdAt'] ?? '' );
-		$ts      = $created ? strtotime( $created ) : false;
-
-		return $ts ? gmdate( 'Y-m-d H:i:s', $ts ) : current_time( 'mysql' );
-	}
-
 	// ----------------------------------------------------------------- lookups
 
 	public static function find_post_by_entry_id( string $entry_id ): int {
+		$post_types = AFR_Types::post_types();
+		if ( ! $post_types ) {
+			return 0;
+		}
+
 		$posts = get_posts(
 			[
-				'post_type'        => AFR_CPT::POST_TYPE,
+				'post_type'        => $post_types,
 				'post_status'      => 'any',
 				'numberposts'      => 1,
 				'fields'           => 'ids',
@@ -294,11 +259,11 @@ class AFR_Sync {
 		return $post ? (int) $post->ID : 0;
 	}
 
-	/** Published posts whose entry IDs were not in the last full fetch. */
-	private static function orphans( array $seen_entry_ids ): array {
+	/** Published posts of one type whose entry IDs were not in that type's last full fetch. */
+	private static function orphans( string $post_type, array $seen_entry_ids ): array {
 		$posts = get_posts(
 			[
-				'post_type'        => AFR_CPT::POST_TYPE,
+				'post_type'        => $post_type,
 				'post_status'      => 'publish',
 				'numberposts'      => -1,
 				'fields'           => 'ids',
