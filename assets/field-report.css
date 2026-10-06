@@ -1,0 +1,878 @@
+/*
+ * Assemble Field Report styling.
+ *
+ * Typography and spacing follow the Assemble brand tokens and the reference
+ * layout at field-report-journey-aeo-technical-seo.html. Spectral carries the
+ * display type, Inter carries everything else — never the reverse.
+ *
+ * Tokens are declared on .afr-doc rather than :root so the rest of the theme is
+ * untouched. --afr-accent is set inline per report from its community.
+ */
+
+.afr-doc {
+	/* Neutrals from the 2026 Brand Identity Guidelines §2.5. These deliberately
+	   duplicate the theme's brand-tokens.css rather than inheriting it: reports
+	   must render correctly even when the plugin is used without the theme. */
+	--black: #151720;
+	--white: #FFFFFF;
+	--paper: #FCFBFA;
+	--ink-100: #151720;
+	--ink-80: #2E3038;
+	--ink-60: #565961;
+	--ink-40: #8B8D93;
+	--ink-20: #C5C6C9;
+	--ink-10: #E7E7E9;
+	--ink-05: #F3F3F4;
+
+	--font-display: 'Spectral', 'Times New Roman', Georgia, serif;
+	--font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	--w-regular: 400;
+	--w-medium: 500;
+	--w-semibold: 600;
+	--w-bold: 700;
+
+	--s-1: 0.25rem;
+	--s-2: 0.5rem;
+	--s-3: 0.75rem;
+	--s-4: 1rem;
+	--s-5: 1.5rem;
+	--s-6: 2rem;
+	--s-7: 3rem;
+	--s-8: 4rem;
+	--s-9: 6rem;
+
+	--max-prose: 42rem;
+	--r-sm: 2px;
+
+	/* Overridden inline per report from its primary community. Marketing teal
+	   is the fallback because every community in the model today is a marketing
+	   or social community. */
+	--afr-accent: #00575D;
+
+	font-family: var(--font-body);
+	font-size: 1rem;
+	line-height: 1.5625;
+	color: var(--ink-100);
+	-webkit-font-smoothing: antialiased;
+}
+
+/* The report renders its own kicker + headline + byline in editorial order, so
+   the theme's H1 would be a duplicate sitting above the logo. */
+.single-field_report .entry-title {
+	display: none;
+}
+
+.afr-doc *,
+.afr-doc *::before,
+.afr-doc *::after {
+	box-sizing: border-box;
+}
+
+.afr-doc h1,
+.afr-doc h2,
+.afr-doc h3,
+.afr-doc h4,
+.afr-doc h5,
+.afr-doc h6 {
+	font-family: var(--font-display);
+	font-weight: var(--w-medium);
+	color: var(--ink-100);
+	margin: 0;
+}
+
+.afr-doc p {
+	font-family: var(--font-body);
+	max-width: var(--max-prose);
+	margin: 0 0 var(--s-4);
+	color: var(--ink-80);
+}
+
+.afr-doc strong,
+.afr-doc b {
+	font-weight: var(--w-bold);
+	color: var(--ink-100);
+}
+
+/* ---------------------------------------------------------------- masthead */
+
+.afr-logo {
+	height: 38px;
+	width: auto;
+	display: block;
+	margin-bottom: var(--s-5);
+}
+
+.afr-doc .afr-kicker {
+	font-family: var(--font-display);
+	font-style: italic;
+	color: var(--ink-60);
+	margin: 0 0 var(--s-5);
+}
+
+.afr-doc .afr-headline {
+	font-size: clamp(1.6rem, 3vw, 2.3rem);
+	line-height: 1.16;
+	letter-spacing: -0.01em;
+	margin-bottom: var(--s-5);
+	max-width: 32ch;
+}
+
+.afr-byline {
+	display: flex;
+	align-items: center;
+	gap: var(--s-3);
+	margin: 0 0 var(--s-6);
+}
+
+.afr-byline-ava {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	overflow: hidden;
+	background: var(--ink-05);
+	flex-shrink: 0;
+}
+
+.afr-byline-ava img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.afr-byline-name {
+	display: block;
+	font-weight: var(--w-bold);
+	font-size: 0.9rem;
+	color: var(--ink-100);
+}
+
+.afr-byline-meta {
+	display: block;
+	font-size: 0.8rem;
+	color: var(--ink-60);
+}
+
+/* ------------------------------------------------------- section labelling */
+
+/* The all-caps Inter label. Sections are labelled, not headlined. */
+.afr-doc .afr-sub {
+	font-family: var(--font-body);
+	font-weight: var(--w-bold);
+	font-size: 0.95rem;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--ink-100);
+	margin: var(--s-6) 0 var(--s-3);
+	max-width: none;
+}
+
+/* The authored subhead sits under the label in Spectral italic. */
+.afr-doc .afr-sub-italic {
+	font-family: var(--font-display);
+	font-style: italic;
+	font-size: 1.05rem;
+	color: var(--ink-100);
+	margin: 0 0 var(--s-4);
+}
+
+/* ------------------------------------------------- Story in Brief / quotes */
+
+.afr-doc .afr-lead-quote {
+	font-family: var(--font-display);
+	font-style: italic;
+	font-size: 1.3rem;
+	line-height: 1.4;
+	border-left: 3px solid var(--afr-accent);
+	padding-left: var(--s-5);
+	margin: var(--s-5) 0;
+	color: var(--ink-100);
+	max-width: var(--max-prose);
+}
+
+.afr-quote-row {
+	display: flex;
+	gap: var(--s-4);
+	align-items: flex-start;
+	margin: var(--s-5) 0;
+}
+
+.afr-quote-row .afr-lead-quote {
+	margin: 0;
+}
+
+.afr-qr-person {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	width: 96px;
+	flex-shrink: 0;
+	margin: 0;
+}
+
+.afr-qr-ava {
+	width: 72px;
+	height: 72px;
+	border-radius: 50%;
+	overflow: hidden;
+	background: var(--ink-05);
+	flex-shrink: 0;
+}
+
+.afr-qr-ava img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.afr-qr-cap {
+	margin-top: var(--s-2);
+}
+
+.afr-qr-name {
+	display: block;
+	font-family: var(--font-body);
+	font-weight: var(--w-bold);
+	font-size: 0.78rem;
+	color: var(--ink-100);
+	line-height: 1.2;
+}
+
+.afr-qr-title {
+	display: block;
+	font-size: 0.7rem;
+	color: var(--ink-60);
+	line-height: 1.25;
+	margin-top: 2px;
+}
+
+/* ---------------------------------------------------------------- charts */
+
+.afr-charts {
+	margin: var(--s-6) 0;
+}
+
+.afr-chart,
+.afr-figure {
+	margin: 0 0 var(--s-5);
+	max-width: var(--max-prose);
+}
+
+.afr-chart img,
+.afr-figure img {
+	max-width: 100%;
+	height: auto;
+	display: block;
+	border: 1px solid var(--ink-10);
+	border-radius: 6px;
+}
+
+.afr-chart figcaption,
+.afr-figure figcaption {
+	border-top: 1px solid var(--ink-10);
+	color: var(--ink-60);
+	font-size: 0.68rem;
+	line-height: 1.5;
+	margin-top: var(--s-3);
+	padding-top: 0.72rem;
+	text-align: center;
+}
+
+/* -------------------------------------------------------------- takeaways */
+
+.afr-takeaways,
+.afr-tk-short {
+	list-style: none;
+	padding: 0;
+	counter-reset: afrtk;
+	max-width: var(--max-prose);
+}
+
+.afr-takeaways {
+	margin: var(--s-4) 0 0;
+}
+
+.afr-tk-short {
+	margin: var(--s-3) 0 var(--s-6);
+}
+
+.afr-takeaways li,
+.afr-tk-short li {
+	counter-increment: afrtk;
+	position: relative;
+	padding: var(--s-3) 0 var(--s-3) var(--s-7);
+	border-bottom: 1px solid var(--ink-10);
+	color: var(--ink-80);
+	margin: 0;
+}
+
+.afr-takeaways li::before,
+.afr-tk-short li::before {
+	content: counter(afrtk);
+	position: absolute;
+	left: 0;
+	top: var(--s-3);
+	font-family: var(--font-display);
+	font-size: 1.3rem;
+	color: var(--afr-accent);
+	line-height: 1;
+}
+
+.afr-takeaways li b,
+.afr-takeaways li strong {
+	color: var(--ink-100);
+}
+
+.afr-tk-short li {
+	font-weight: var(--w-semibold);
+	color: var(--ink-100);
+}
+
+.afr-tk-short li:last-child {
+	border-bottom: none;
+}
+
+/* ------------------------------------------------------------ boilerplate */
+
+.afr-doc .afr-boiler {
+	font-size: 0.92rem;
+	color: var(--ink-60);
+}
+
+.afr-author-card {
+	display: flex;
+	gap: var(--s-4);
+	align-items: flex-start;
+	margin-top: var(--s-3);
+	max-width: var(--max-prose);
+}
+
+.afr-au-ava {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	overflow: hidden;
+	background: var(--ink-05);
+	flex-shrink: 0;
+}
+
+.afr-au-ava img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.afr-author-card .afr-boiler {
+	margin: 0;
+}
+
+.afr-community-logo {
+	max-width: 180px;
+	height: auto;
+	margin-bottom: var(--s-4);
+}
+
+/* -------------------------------------------- engagement footer per version */
+
+.afr-engage {
+	border-top: 3px solid var(--afr-accent);
+	margin-top: var(--s-8);
+	padding-top: var(--s-6);
+}
+
+.afr-doc .afr-engage-title {
+	font-family: var(--font-display);
+	font-weight: var(--w-medium);
+	font-size: 1.5rem;
+	margin: 0 0 var(--s-5);
+}
+
+.afr-flow-list {
+	list-style: none;
+	margin: var(--s-4) 0 0;
+	padding: 0;
+}
+
+.afr-flow-list > li {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: var(--s-4);
+	align-items: start;
+	padding: var(--s-5) 0;
+	border-bottom: 1px solid var(--ink-10);
+	margin: 0;
+}
+
+.afr-flow-list > li:first-child {
+	padding-top: var(--s-2);
+}
+
+.afr-flow-list > li:last-child {
+	border-bottom: none;
+	padding-bottom: 0;
+}
+
+.afr-fl-mark {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	border: 1px solid var(--afr-accent);
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--afr-accent);
+	font-size: 1rem;
+}
+
+.afr-flow-list h6 {
+	font-family: var(--font-body);
+	margin: 0 0 var(--s-2);
+	font-size: 1rem;
+	font-weight: var(--w-bold);
+	color: var(--ink-100);
+}
+
+.afr-fl-body p {
+	margin: 0;
+	font-size: 0.88rem;
+	color: var(--ink-80);
+	max-width: none;
+}
+
+.afr-fl-links {
+	list-style: none;
+	margin: var(--s-3) 0 0;
+	padding: 0;
+}
+
+.afr-fl-links li {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--s-4);
+	align-items: baseline;
+	padding: var(--s-2) 0;
+	border-bottom: 1px solid var(--ink-10);
+	margin: 0;
+}
+
+.afr-fl-links li:last-child {
+	border-bottom: none;
+	padding-bottom: 0;
+}
+
+.afr-fl-links a {
+	color: var(--ink-100);
+	text-decoration: none;
+	font-weight: var(--w-semibold);
+	font-size: 0.88rem;
+	border-bottom: 1px solid var(--afr-accent);
+	padding-bottom: 1px;
+}
+
+.afr-fl-links a:hover {
+	color: var(--afr-accent);
+}
+
+.afr-fl-links .afr-when {
+	font-size: 0.74rem;
+	color: var(--ink-60);
+	white-space: nowrap;
+}
+
+.afr-fl-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--s-2);
+	margin-top: var(--s-3);
+}
+
+/* ----------------------------------------------------------------- buttons */
+
+.afr-btn,
+.afr-btn-sm {
+	display: inline-block;
+	font-family: var(--font-body);
+	font-weight: var(--w-bold);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	border-radius: var(--r-sm);
+	text-decoration: none;
+}
+
+.afr-btn {
+	font-size: 0.82rem;
+	padding: var(--s-4) var(--s-6);
+	background: var(--ink-100);
+	color: var(--white);
+	border: 1px solid var(--ink-100);
+}
+
+.afr-btn:hover {
+	background: var(--ink-80);
+	color: var(--white);
+}
+
+.afr-btn-sm {
+	font-size: 0.74rem;
+	padding: var(--s-3) var(--s-4);
+}
+
+.afr-btn-sm.afr-solid {
+	background: var(--ink-100);
+	color: var(--white);
+	border: 1px solid var(--ink-100);
+}
+
+.afr-btn-sm.afr-solid:hover {
+	background: var(--ink-80);
+	color: var(--white);
+}
+
+.afr-btn-sm.afr-ghost {
+	background: transparent;
+	color: var(--ink-100);
+	border: 1px solid var(--ink-100);
+}
+
+.afr-btn-sm.afr-ghost:hover {
+	background: var(--ink-100);
+	color: var(--white);
+}
+
+/* -------------------------------------------------------------------- gate */
+
+.afr-gate {
+	border: 1px dashed var(--ink-20);
+	background: var(--paper);
+	padding: var(--s-6);
+	margin-top: var(--s-5);
+	text-align: center;
+	max-width: var(--max-prose);
+}
+
+.afr-doc .afr-gate-lock {
+	font-size: 0.72rem;
+	font-weight: var(--w-bold);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink-60);
+	margin: 0 0 var(--s-3);
+	max-width: none;
+}
+
+.afr-doc .afr-gate-title {
+	font-family: var(--font-display);
+	font-size: 1.5rem;
+	line-height: 1.25;
+	margin: 0 0 var(--s-4);
+}
+
+/* Delegate: reads the report, peer access stays locked. */
+.afr-gated-block {
+	position: relative;
+	margin: var(--s-5) 0;
+}
+
+.afr-gated-block > :first-child {
+	filter: blur(3px);
+	opacity: 0.5;
+	pointer-events: none;
+	user-select: none;
+}
+
+.afr-gate-overlay {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	gap: var(--s-3);
+	padding: var(--s-5);
+	background: rgba(255, 255, 255, 0.74);
+}
+
+.afr-go-badge {
+	font-weight: var(--w-bold);
+	font-size: 0.66rem;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--afr-accent);
+	border: 1px solid var(--afr-accent);
+	padding: 3px 10px;
+	border-radius: var(--r-sm);
+}
+
+.afr-go-title {
+	font-family: var(--font-display);
+	font-size: 1.3rem;
+	color: var(--ink-100);
+	line-height: 1.2;
+}
+
+.afr-go-sub {
+	font-size: 0.88rem;
+	color: var(--ink-60);
+	max-width: 44ch;
+	line-height: 1.5;
+}
+
+/* --------------------------------------------------- Council: summary first */
+
+.afr-same-note {
+	font-size: 0.82rem;
+	color: var(--ink-60);
+	background: var(--ink-05);
+	border-left: 3px solid var(--afr-accent);
+	padding: var(--s-3) var(--s-4);
+	margin-bottom: var(--s-5);
+	max-width: var(--max-prose);
+}
+
+/* <details> so the full report is reachable without JavaScript. */
+.afr-expand {
+	margin: var(--s-5) 0 0;
+}
+
+.afr-expand > summary {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--s-2);
+	font-family: var(--font-body);
+	font-weight: var(--w-bold);
+	font-size: 0.8rem;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	padding: var(--s-4) var(--s-6);
+	border-radius: var(--r-sm);
+	background: var(--ink-100);
+	color: var(--white);
+	border: 1px solid var(--ink-100);
+	cursor: pointer;
+	list-style: none;
+}
+
+.afr-expand > summary::-webkit-details-marker {
+	display: none;
+}
+
+.afr-expand > summary::after {
+	content: "\2193";
+	font-size: 0.9rem;
+}
+
+.afr-expand[open] > summary::after {
+	content: "\2191";
+}
+
+.afr-expand > summary:hover {
+	background: var(--ink-80);
+}
+
+.afr-expand[open] > summary {
+	margin-bottom: var(--s-6);
+}
+
+.afr-expand-body {
+	border-top: 1px solid var(--ink-10);
+	padding-top: var(--s-6);
+}
+
+/* --------------------------------------------------------------- colophon */
+
+.afr-colophon {
+	background: var(--black);
+	color: var(--white);
+	padding: var(--s-6);
+	margin-top: var(--s-9);
+	display: flex;
+	align-items: center;
+	gap: var(--s-6);
+	flex-wrap: wrap;
+}
+
+.afr-colophon .afr-assemble-mark {
+	height: 26px;
+	width: auto;
+	color: var(--white);
+}
+
+.afr-colophon .afr-assemble-mark svg {
+	height: 100%;
+	width: auto;
+	display: block;
+	fill: currentColor;
+}
+
+.afr-colophon .afr-fam-sep {
+	width: 1px;
+	height: 34px;
+	background: rgba(255, 255, 255, 0.22);
+}
+
+.afr-colophon .afr-fam-mark {
+	height: 40px;
+	width: auto;
+}
+
+/* ------------------------------------------------- beta bypass banner */
+
+.afr-bypass-banner {
+	font-family: var(--font-body);
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: var(--s-2) var(--s-3);
+	margin-bottom: var(--s-6);
+	padding: var(--s-3) var(--s-4);
+	background: var(--ink-05);
+	border-left: 3px solid var(--afr-accent);
+	font-size: 0.84rem;
+	line-height: 1.5;
+	color: var(--ink-80);
+}
+
+.afr-bypass-badge {
+	font-weight: var(--w-bold);
+	font-size: 0.66rem;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--ink-100);
+	border: 1px solid var(--ink-20);
+	background: var(--white);
+	padding: 3px 8px;
+	border-radius: var(--r-sm);
+	white-space: nowrap;
+}
+
+.afr-bypass-text {
+	flex: 1 1 20rem;
+}
+
+.afr-bypass-off,
+.afr-doc .afr-gate-note {
+	font-size: 0.78rem;
+	color: var(--ink-60);
+}
+
+.afr-bypass-off {
+	white-space: nowrap;
+}
+
+.afr-doc .afr-gate-note {
+	margin: var(--s-3) 0 0;
+	max-width: none;
+}
+
+/* Secondary to the primary action next to it. */
+.afr-btn--bypass {
+	background: transparent;
+	color: var(--ink-100);
+	border: 1px solid var(--ink-100);
+}
+
+.afr-btn--bypass:hover {
+	background: var(--ink-100);
+	color: var(--white);
+}
+
+.afr-gate-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--s-3);
+	justify-content: center;
+	margin: 0;
+}
+
+/* ------------------------------------------------------ admin preview bar */
+
+.afr-preview-bar {
+	font-family: var(--font-body);
+	margin-bottom: var(--s-6);
+	padding: var(--s-3) var(--s-4);
+	background: #FAFAFA;
+	border: 1px solid #C4C4C4;
+	border-left: 3px solid #0C0C0C;
+	font-size: 0.82rem;
+	line-height: 1.9;
+	color: #2B2B2B;
+}
+
+.afr-preview-label {
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	font-size: 0.72rem;
+	color: #545454;
+	margin-right: var(--s-2);
+}
+
+.afr-preview-bar a {
+	color: #0C0C0C;
+	text-decoration: none;
+	border-bottom: 1px solid transparent;
+}
+
+.afr-preview-bar a:hover {
+	border-bottom-color: currentColor;
+}
+
+.afr-preview-bar a.afr-active {
+	font-weight: 700;
+	border-bottom: 2px solid currentColor;
+}
+
+.afr-preview-bar .afr-sep {
+	opacity: 0.3;
+	margin: 0 0.15em;
+}
+
+.afr-preview-note {
+	display: block;
+	margin-top: var(--s-1);
+	color: #545454;
+	font-size: 0.92em;
+	line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------- teasers */
+
+.afr-teaser {
+	font-family: var(--font-body);
+}
+
+.afr-teaser-note {
+	font-size: 0.9rem;
+	color: #545454;
+}
+
+/* ------------------------------------------------------------ responsive */
+
+@media (max-width: 720px) {
+	.afr-quote-row {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.afr-qr-person {
+		flex-direction: row;
+		width: auto;
+		text-align: left;
+		gap: var(--s-3);
+		align-items: center;
+	}
+
+	.afr-qr-ava {
+		width: 48px;
+		height: 48px;
+	}
+
+	.afr-colophon {
+		gap: var(--s-4);
+	}
+}
