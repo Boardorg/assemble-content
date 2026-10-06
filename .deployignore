@@ -1,0 +1,13 @@
+README.md
+docs/
+.github/
+contentful/
+node_modules/
+vendor/
+tests/
+composer.json
+composer.lock
+phpcs.xml.dist
+package.json
+package-lock.json
+*.map

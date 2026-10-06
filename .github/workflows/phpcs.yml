@@ -1,0 +1,23 @@
+name: PHPCS (WordPress VIP)
+# Report-only for now: existing findings are fixed as code is touched.
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  phpcs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer
+          coverage: none
+      - name: Install VIP coding standards
+        run: |
+          composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          composer global require --no-interaction automattic/vipwpcs
+      - name: Run PHPCS
+        continue-on-error: true
+        run: ~/.composer/vendor/bin/phpcs --report=summary --report-full

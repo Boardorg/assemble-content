@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<ruleset name="Assemble Content">
+	<description>WordPress VIP Go standards. The Member Center runs on VIP and will install this plugin.</description>
+	<file>.</file>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/contentful/*</exclude-pattern>
+	<arg name="extensions" value="php"/>
+	<arg value="sp"/>
+	<rule ref="WordPress-VIP-Go"/>
+	<config name="testVersion" value="8.0-"/>
+</ruleset>

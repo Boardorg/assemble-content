@@ -1,0 +1,22 @@
+name: Deploy to production
+# Manual only. The `production` environment requires a reviewer (Cale or Mark).
+# WPE_PROD_ENV is a repository/org variable holding the production install name
+# from the WP Engine portal. It is deliberately not written here.
+on:
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Require the production install name
+        run: test -n "${{ vars.WPE_PROD_ENV }}" || { echo "Set the WPE_PROD_ENV variable first."; exit 1; }
+      - uses: actions/checkout@v4
+      - uses: wpengine/github-action-wpe-site-deploy@v3
+        with:
+          WPE_SSHG_KEY_PRIVATE: ${{ secrets.WPE_SSHG_KEY_PRIVATE }}
+          WPE_ENV: ${{ vars.WPE_PROD_ENV }}
+          REMOTE_PATH: "wp-content/plugins/assemble-content/"
+          PHP_LINT: TRUE
+          FLAGS: -azvr --inplace --delete --exclude=".*" --exclude-from=.deployignore
+          CACHE_CLEAR: TRUE
