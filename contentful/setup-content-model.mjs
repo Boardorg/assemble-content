@@ -61,6 +61,9 @@ const url = (id, name, extra = {}) => ({
 
 const AUDIENCES = ['Public', 'Board Member', 'Board Chair', 'Delegate', 'Network Member', 'Council Chair']
 
+// Practice-area keys shared with the Member Center (Network practice_area) and the website (data-area).
+const PRACTICE_AREAS = ['human-resources', 'marketing', 'manufacturing', 'technology', 'finance']
+
 const TAKEAWAY_RT_VALIDATIONS = [
   { enabledMarks: ['bold', 'italic'], message: 'Only bold and italic are allowed in takeaways.' },
   { enabledNodeTypes: ['ordered-list', 'list-item'], message: 'Takeaways are a numbered list.' },
@@ -94,10 +97,38 @@ const contentTypes = [
         symbol('name', 'Name', { required: true }),
         symbol('shortName', 'Short name'),
         symbol('slug', 'Slug', { validations: [{ unique: true }] }),
+        symbol('practiceArea', 'Practice area', { validations: [{ in: PRACTICE_AREAS }] }),
+        {
+          ...base, id: 'memberCenterGroups', name: 'Member Center groups', type: 'Array',
+          items: { type: 'Symbol', validations: [{ regexp: { pattern: '^[a-z0-9-]+$' } }] },
+        },
         assetLink('logo', 'Logo'),
         longText('boilerplate', 'Boilerplate'),
       ],
     },
+    controls: [
+      { fieldId: 'practiceArea', widgetId: 'dropdown', settings: { helpText: 'The Assemble practice this community belongs to. Same keys as the Member Center Network practice_area and the website’s data-area: human-resources (HR), marketing, manufacturing (Supply Chain & Manufacturing), technology (Data & Technology), finance.' } },
+      { fieldId: 'memberCenterGroups', widgetId: 'tagEditor', settings: { helpText: 'The Member Center BuddyPress group slug(s) for this community, e.g. learning-development. ESG uses two (esg-csr, esg-csr-sustainability). Leave blank for councils that have no Member Center group.' } },
+    ],
+  },
+  {
+    id: 'topic',
+    data: {
+      name: 'Topic',
+      description: 'Closed topic vocabulary, mirrored from the Member Center content-topic taxonomy (boardmc-topics vocabulary.php). Topics answer “what is this about”; communities answer “who is it for”.',
+      displayField: 'name',
+      fields: [
+        symbol('name', 'Name', { required: true }),
+        symbol('slug', 'Slug', { required: true, validations: [{ unique: true }, { regexp: { pattern: '^[a-z0-9-]+$' } }] }),
+        symbol('cluster', 'Cluster'),
+        entryLinks('communities', 'Communities', ['community']),
+      ],
+    },
+    controls: [
+      { fieldId: 'slug', widgetId: 'singleLine', settings: { helpText: 'Must match the Member Center content-topic slug exactly. Slugs are permanent: never rename one that content uses. Retire it and add a new topic instead.' } },
+      { fieldId: 'cluster', widgetId: 'singleLine', settings: { helpText: 'Display grouping only (the Member Center topic_cluster), never a hierarchy.' } },
+      { fieldId: 'communities', widgetId: 'entryLinksEditor', settings: { helpText: 'The communities this topic is offered in (the Member Center topic_areas). A shared topic lists several communities; it is never duplicated per community.' } },
+    ],
   },
   {
     id: 'mdTake',
@@ -131,6 +162,7 @@ const contentTypes = [
         symbol('sourceLine', 'Source line'),
         entryLink('primaryCommunity', 'Community', ['community'], { required: true }),
         entryLinks('additionalCommunities', 'Additional communities', ['community']),
+        entryLinks('topics', 'Topics', ['topic']),
         entryLink('author', 'Author', ['person']),
         assetLink('featuredImage', 'Featured image'),
         {
@@ -166,6 +198,7 @@ const contentTypes = [
     controls: [
       { fieldId: 'slug', widgetId: 'slugEditor', settings: { trackingFieldId: 'headline' } },
       { fieldId: 'sourceLine', widgetId: 'singleLine', settings: { helpText: 'Final formatted source line, e.g. “From the March 2026 AEO Board discussion.”' } },
+      { fieldId: 'topics', widgetId: 'entryLinksEditor', settings: { helpText: 'One to four topics, chosen from the topics offered in this report’s communities. Practice area is not set here: it comes from the communities.' } },
       { fieldId: 'availableTo', widgetId: 'checkbox', settings: { helpText: 'Public: headline + Picking Up the Story only. Other audiences: complete report. Council Chair: complete report plus the derived Key Takeaways at a Glance view.' } },
       { fieldId: 'featured', widgetId: 'boolean', settings: { helpText: 'Promote this report to the front of the homepage stream and the Peer Intelligence carousel. Gating is unaffected — a featured report that a visitor cannot open still shows only its card.' } },
       { fieldId: 'featuredRank', widgetId: 'numberEditor', settings: { helpText: 'Order among featured reports, 1 first. Leave blank and it falls in by date behind the ranked ones.' } },
@@ -181,7 +214,7 @@ const contentTypes = [
       { fieldId: 'socialCopyOverride', widgetId: 'multipleLine', settings: { helpText: 'Leave blank to use Picking Up the Story as the source for social copy. Enter custom copy only when the report needs a more tailored social treatment.' } },
     ],
     tabs: [
-      { groupId: 'basics', name: 'Basics', fields: ['internalTitle', 'headline', 'slug', 'sourceLine', 'primaryCommunity', 'additionalCommunities', 'author', 'featuredImage', 'availableTo', 'featured', 'featuredRank'] },
+      { groupId: 'basics', name: 'Basics', fields: ['internalTitle', 'headline', 'slug', 'sourceLine', 'primaryCommunity', 'additionalCommunities', 'topics', 'author', 'featuredImage', 'availableTo', 'featured', 'featuredRank'] },
       { groupId: 'standardReport', name: 'Standard Report', fields: ['mdTakes', 'pickingUpSubhead', 'pickingUpBody', 'charts', 'pullquote', 'focusSubhead', 'focusBody', 'takeawaysStandard'] },
       { groupId: 'newsletterVersion', name: 'Newsletter Version', fields: ['newsletterSetup', 'newsletterFocus', 'newsletterImage', 'takeawaysNewsletter', 'recordingUrl'] },
       { groupId: 'variations', name: 'Variations', fields: ['takeawaysShort', 'socialCopyOverride'] },
