@@ -45,9 +45,17 @@ class AFR_Sync {
 			self::sync_type( (string) $content_type, $type, $force, $result );
 		}
 
-		// Site Features ride along with a full sync so `wp assemble-content sync --all`
+		// The community directory and Site Features ride along with a full sync so `wp assemble-content sync --all`
 		// rebuilds the entire website surface, not just the post types.
 		if ( $only_type === '' ) {
+			$communities = AFR_Communities::sync();
+			if ( $communities['error'] !== '' ) {
+				$result['errors']++;
+				$result['messages'][] = 'communities: ' . $communities['error'];
+			} else {
+				$result['messages'][] = sprintf( 'communities: %d cached', $communities['count'] );
+			}
+
 			$features = AFR_Features::sync();
 			if ( $features['error'] !== '' ) {
 				$result['errors']++;

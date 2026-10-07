@@ -94,8 +94,53 @@ class AFR_Query {
 		);
 	}
 
+	/**
+	 * Newest reports tagged with one community (primary or additional).
+	 *
+	 * @return WP_Post[]
+	 */
+	public static function in_community( string $community_slug, int $limit = 3 ): array {
+		return get_posts(
+			[
+				'post_type'   => AFR_CPT::POST_TYPE,
+				'post_status' => 'publish',
+				'numberposts' => $limit,
+				'orderby'     => 'date',
+				'order'       => 'DESC',
+				'tax_query'   => [ // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.tax_query_tax_query -- one indexed term lookup.
+					[
+						'taxonomy' => AFR_CPT::TAXONOMY,
+						'field'    => 'slug',
+						'terms'    => $community_slug,
+					],
+				],
+			]
+		);
+	}
+
 	/** Is this report flagged in Contentful? */
 	public static function is_featured( int $post_id ): bool {
 		return '1' === (string) get_post_meta( $post_id, AFR_CPT::META_FEATURED, true );
+	}
+
+	/**
+	 * A report's topics, in the order the writer chose them.
+	 *
+	 * @return array<int,array{name:string,slug:string}>
+	 */
+	public static function topics( int $post_id ): array {
+		$topics = [];
+
+		foreach ( (array) AFR_Contentful::field( AFR_Renderer::data( $post_id ), 'topics', [] ) as $topic ) {
+			$name = trim( (string) ( AFR_Contentful::field( is_array( $topic ) ? $topic : null, 'name' ) ?? '' ) );
+			if ( $name !== '' ) {
+				$topics[] = [
+					'name' => $name,
+					'slug' => sanitize_title( (string) ( AFR_Contentful::field( $topic, 'slug' ) ?? $name ) ),
+				];
+			}
+		}
+
+		return $topics;
 	}
 }

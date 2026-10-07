@@ -149,9 +149,10 @@ function afr_summary( array $r ): string {
 	return sprintf( 'created %d, updated %d, unchanged %d, drafted %d, errors %d', $r['created'], $r['updated'], $r['unchanged'], $r['drafted'], $r['errors'] );
 }
 
-$saved_last_sync = get_option( 'afr_last_sync' );
-$saved_features  = get_option( AFR_Features::OPTION );
-$real_reports    = afr_published( AFR_CPT::POST_TYPE );
+$saved_last_sync   = get_option( 'afr_last_sync' );
+$saved_features    = get_option( AFR_Features::OPTION );
+$saved_communities = get_option( AFR_Communities::OPTION );
+$real_reports      = afr_published( AFR_CPT::POST_TYPE );
 
 try {
 	WP_CLI::log( '1. 150 entries arrive across two pages' );
@@ -214,6 +215,7 @@ try {
 	$r = AFR_Sync::sync_all( false, 'test' );
 	afr_check( 'Field Reports still published', $real_reports === afr_published( AFR_CPT::POST_TYPE ), afr_summary( $r ) );
 	afr_check( 'Site Features cache kept', get_option( AFR_Features::OPTION ) === $saved_features );
+	afr_check( 'community directory kept', get_option( AFR_Communities::OPTION ) === $saved_communities );
 	afr_check( 'test types still synced', 3 === afr_published( 'afr_test_paged' ) && 5 === afr_published( 'afr_test_other' ) );
 } finally {
 	// Clean up everything the test created.

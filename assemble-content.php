@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Assemble Content
  * Description:       The Assemble Content feed. Syncs published Contentful entries (Field Reports today) into hidden, gated post types. Webhook-driven, with WP-CLI commands and per-audience rendering.
- * Version:           1.1.0
+ * Version:           1.2.0
  * Requires PHP:      8.0
  * Author:            Assemble
  * Text Domain:       assemble-content
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'AFR_VERSION', '1.1.0' );
+define( 'AFR_VERSION', '1.2.0' );
 define( 'AFR_FILE', __FILE__ );
 define( 'AFR_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AFR_URL', plugin_dir_url( __FILE__ ) );
@@ -35,6 +35,7 @@ require_once AFR_DIR . 'includes/class-afr-engagement.php';
 require_once AFR_DIR . 'includes/class-afr-renderer.php';
 require_once AFR_DIR . 'includes/class-afr-listing.php';
 require_once AFR_DIR . 'includes/class-afr-features.php';
+require_once AFR_DIR . 'includes/class-afr-communities.php';
 require_once AFR_DIR . 'includes/class-afr-query.php';
 require_once AFR_DIR . 'includes/class-afr-sync.php';
 require_once AFR_DIR . 'includes/class-afr-rest.php';
