@@ -2,6 +2,9 @@
 /**
  * The engagement footer that closes each version of a report.
  *
+ * data() builds it as plain data for the view model; html() formats that data
+ * as the plugin's own markup. Both see the same items.
+ *
  * Structure and copy follow the reference journey document: members get four
  * routes into peer intelligence, Council members get three Council-specific
  * routes, Delegates get the same block locked behind an upgrade, and the public
@@ -47,15 +50,13 @@ class AFR_Engagement {
 		return is_string( $value ) ? $value : '';
 	}
 
-	/** The engagement block for a given view. */
+	/** The engagement block for a given view, as HTML (filterable). */
 	public static function render( int $post_id, array $entry, string $view ): string {
-		$block = match ( $view ) {
-			AFR_Audience::VIEW_COUNCIL  => self::council( $post_id, $entry ),
-			AFR_Audience::VIEW_DELEGATE => self::delegate( $post_id, $entry ),
-			AFR_Audience::VIEW_STANDARD => self::member( $post_id, $entry ),
-			default                     => '',
-		};
+		return self::filtered_html( self::data( $post_id, $entry, $view ), $post_id, $view );
+	}
 
+	/** Format engagement data as HTML, through the `afr_engagement_html` filter. */
+	public static function filtered_html( array $blocks, int $post_id, string $view ): string {
 		/**
 		 * Filter the rendered engagement footer.
 		 *
@@ -63,12 +64,33 @@ class AFR_Engagement {
 		 * @param int    $post_id
 		 * @param string $view
 		 */
-		return (string) apply_filters( 'afr_engagement_html', $block, $post_id, $view );
+		return (string) apply_filters( 'afr_engagement_html', self::html( $blocks ), $post_id, $view );
+	}
+
+	/**
+	 * The engagement block for a given view, as data. Only items with a real
+	 * destination are included.
+	 *
+	 * @return array<int,array{key:string,title:string,items:array,lock:?array}> Blocks, each:
+	 *   key    'member', 'council', 'locked' or 'related'
+	 *   title  heading for the block
+	 *   items  [ { key, heading, body (plain text), actions: [ { url, label, variant } ], links: [ { url, title, when } ] } ]
+	 *   lock   null, or { badge, title, copy, url, label } when the block is shown locked (delegate)
+	 */
+	public static function data( int $post_id, array $entry, string $view ): array {
+		$blocks = match ( $view ) {
+			AFR_Audience::VIEW_COUNCIL  => self::council( $post_id ),
+			AFR_Audience::VIEW_DELEGATE => self::delegate( $post_id, $entry ),
+			AFR_Audience::VIEW_STANDARD => self::member( $post_id, $entry ),
+			default                     => [],
+		};
+
+		return array_values( array_filter( $blocks, static fn( $block ) => ! empty( $block['items'] ) ) );
 	}
 
 	// ------------------------------------------------------------------ member
 
-	private static function member( int $post_id, array $entry ): string {
+	private static function member( int $post_id, array $entry ): array {
 		$community = self::community_name( $entry );
 		$items     = [];
 
@@ -76,169 +98,245 @@ class AFR_Engagement {
 		$md_message = self::link( 'md_message' );
 
 		if ( $md_booking || $md_message ) {
-			$actions = '';
+			$actions = [];
 			if ( $md_booking ) {
-				$actions .= self::button( $md_booking, 'Book a 1:1', 'afr-solid' );
+				$actions[] = self::action( $md_booking, 'Book a 1:1', 'solid' );
 			}
 			if ( $md_message ) {
-				$actions .= self::button( $md_message, 'Message your MD', 'afr-ghost' );
+				$actions[] = self::action( $md_message, 'Message your MD', 'ghost' );
 			}
 
 			$items[] = self::item(
+				'md',
 				'Get 1-1 support from your Membership Director',
 				'Bring a question from your own work to your Membership Director, or suggest a topic for an upcoming discussion.',
-				'<div class="afr-fl-actions">' . $actions . '</div>'
+				$actions
 			);
 		}
 
 		$forum = self::link( 'forum' );
 		if ( $forum ) {
 			$items[] = self::item(
+				'forum',
 				'Join an existing discussion',
 				'Pick up the thread with peers already working through this.',
-				'<ul class="afr-fl-links"><li>' . self::anchor( $forum, sprintf( 'Post a question to %s', $community ) ) . '</li></ul>'
+				[],
+				[ [ 'url' => $forum, 'title' => sprintf( 'Post a question to %s', $community ), 'when' => '' ] ]
 			);
 		}
 
 		$related = self::related_reports( $post_id );
-		if ( $related !== '' ) {
+		if ( $related ) {
 			$items[] = self::item(
+				'related',
 				'Explore related topics',
 				sprintf( 'Earlier %s discussions on the same thread.', $community ),
+				[],
 				$related
 			);
 		}
 
 		$upcoming = self::upcoming();
-		if ( $upcoming !== '' ) {
+		if ( $upcoming ) {
 			$items[] = self::item(
+				'upcoming',
 				'Save upcoming discussions to your calendar',
-				sprintf( 'Reserve your seat for what&rsquo;s next on %s.', $community ),
+				sprintf( 'Reserve your seat for what’s next on %s.', $community ),
+				[],
 				$upcoming
 			);
 		}
 
-		return self::wrap( 'Access more peer intelligence on this topic', $items );
+		return [ self::block( 'member', 'Access more peer intelligence on this topic', $items ) ];
 	}
 
 	// ----------------------------------------------------------------- council
 
-	private static function council( int $post_id, array $entry ): string {
+	private static function council( int $post_id ): array {
 		$items = [];
 
 		$one_on_one = self::link( 'council_1on1' );
 		if ( $one_on_one ) {
 			$items[] = self::item(
+				'council_1on1',
 				'Request a 1-1 with your Council Director',
 				'Get a direct read on what this means for your organization, and help shape where the Council goes next.',
-				'<div class="afr-fl-actions">' . self::button( $one_on_one, 'Request a 1-1', 'afr-solid' ) . '</div>'
+				[ self::action( $one_on_one, 'Request a 1-1', 'solid' ) ]
 			);
 		}
 
 		$benchmark = self::link( 'council_benchmark' );
 		if ( $benchmark ) {
 			$items[] = self::item(
+				'council_benchmark',
 				'Review your personalized benchmark results',
-				'See how your organization&rsquo;s answers compare against the full Council on this topic.',
-				'<div class="afr-fl-actions">' . self::button( $benchmark, 'View your results', 'afr-ghost' ) . '</div>'
+				'See how your organization’s answers compare against the full Council on this topic.',
+				[ self::action( $benchmark, 'View your results', 'ghost' ) ]
 			);
 		}
 
 		// No destination needed — this one is an instruction, not a link.
 		$items[] = self::item(
+			'council_session',
 			'Bring this to your next Council session',
-			'Add the discussion to your agenda and invite a peer who should be in the room.',
-			''
+			'Add the discussion to your agenda and invite a peer who should be in the room.'
 		);
 
 		$related = self::related_reports( $post_id );
-		if ( $related !== '' ) {
+		if ( $related ) {
 			$items[] = self::item(
+				'related',
 				'Explore related topics',
 				'Earlier discussions on the same thread.',
+				[],
 				$related
 			);
 		}
 
-		return self::wrap( 'Go deeper as a Council member', $items );
+		return [ self::block( 'council', 'Go deeper as a Council member', $items ) ];
 	}
 
 	// ---------------------------------------------------------------- delegate
 
 	/**
-	 * Delegates see the member block, blurred, with an upgrade prompt over it.
+	 * Delegates see the member block, locked, with an upgrade prompt over it.
 	 * Related reports stay readable — they are links to content Delegates can
 	 * already open, so locking them would be misleading.
 	 */
-	private static function delegate( int $post_id, array $entry ): string {
+	private static function delegate( int $post_id, array $entry ): array {
 		$community = self::community_name( $entry );
-		$locked    = self::wrap(
-			'Access more peer intelligence on this topic',
-			[
-				self::item(
-					'Get 1-1 support from your Membership Director',
-					'Bring a question from your own work to your Membership Director, or suggest a topic for an upcoming discussion.',
-					''
-				),
-				self::item(
-					'Join an existing discussion',
-					'Pick up the thread with peers already working through this.',
-					''
-				),
-				self::item(
-					'Save upcoming discussions to your calendar',
-					sprintf( 'Reserve your seat for what&rsquo;s next on %s.', $community ),
-					''
-				),
-			]
-		);
-
-		if ( $locked === '' ) {
-			return '';
-		}
 
 		// The delegate treatment exists to drive upgrades, so an overlay with no
 		// action defeats it — fall back to the site's own membership page.
 		$upgrade = self::link( 'upgrade' ) ?: self::default_join_url();
 
-		$overlay = '<div class="afr-gate-overlay">'
-			. '<span class="afr-go-badge">Members only</span>'
-			. '<div class="afr-go-title">Unlock peer access</div>'
-			. '<div class="afr-go-sub">1-1 time with your Membership Director, joining discussions, and saving upcoming sessions are open to Board and Council members.</div>'
-			. ( $upgrade ? self::button( $upgrade, 'Upgrade to membership', 'afr-solid' ) : '' )
-			. '</div>';
-
-		$html = '<div class="afr-gated-block">' . $locked . $overlay . '</div>';
+		$locked = self::block(
+			'locked',
+			'Access more peer intelligence on this topic',
+			[
+				self::item(
+					'md',
+					'Get 1-1 support from your Membership Director',
+					'Bring a question from your own work to your Membership Director, or suggest a topic for an upcoming discussion.'
+				),
+				self::item(
+					'forum',
+					'Join an existing discussion',
+					'Pick up the thread with peers already working through this.'
+				),
+				self::item(
+					'upcoming',
+					'Save upcoming discussions to your calendar',
+					sprintf( 'Reserve your seat for what’s next on %s.', $community )
+				),
+			],
+			[
+				'badge' => 'Members only',
+				'title' => 'Unlock peer access',
+				'copy'  => '1-1 time with your Membership Director, joining discussions, and saving upcoming sessions are open to Board and Council members.',
+				'url'   => $upgrade,
+				'label' => 'Upgrade to membership',
+			]
+		);
 
 		// Anything a Delegate can genuinely act on sits outside the lock.
 		$related = self::related_reports( $post_id );
-		if ( $related !== '' ) {
-			$html .= self::wrap(
+
+		return [
+			$locked,
+			self::block(
+				'related',
 				'Explore related topics',
-				[ self::item( 'Earlier discussions on the same thread', '', $related ) ]
-			);
+				$related ? [ self::item( 'related', 'Earlier discussions on the same thread', '', [], $related ) ] : []
+			),
+		];
+	}
+
+	// -------------------------------------------------------------------- html
+
+	/** The plugin's own markup for engagement data. */
+	public static function html( array $blocks ): string {
+		$html = '';
+
+		foreach ( $blocks as $block ) {
+			$wrap = self::wrap( $block['title'], array_map( [ self::class, 'item_html' ], $block['items'] ) );
+
+			if ( empty( $block['lock'] ) || $wrap === '' ) {
+				$html .= $wrap;
+				continue;
+			}
+
+			$lock     = $block['lock'];
+			$overlay  = '<div class="afr-gate-overlay">'
+				. '<span class="afr-go-badge">' . esc_html( $lock['badge'] ) . '</span>'
+				. '<div class="afr-go-title">' . esc_html( $lock['title'] ) . '</div>'
+				. '<div class="afr-go-sub">' . esc_html( $lock['copy'] ) . '</div>'
+				. ( $lock['url'] ? self::button( $lock['url'], $lock['label'], 'afr-solid' ) : '' )
+				. '</div>';
+			$html    .= '<div class="afr-gated-block">' . $wrap . $overlay . '</div>';
 		}
 
 		return $html;
 	}
 
+	private static function item_html( array $item ): string {
+		$extra = '';
+
+		if ( $item['actions'] ) {
+			$extra .= '<div class="afr-fl-actions">';
+			foreach ( $item['actions'] as $action ) {
+				$extra .= self::button( $action['url'], $action['label'], 'afr-' . $action['variant'] );
+			}
+			$extra .= '</div>';
+		}
+
+		if ( $item['links'] ) {
+			$extra .= '<ul class="afr-fl-links">';
+			foreach ( $item['links'] as $link ) {
+				$extra .= '<li>' . self::anchor( $link['url'], $link['title'] )
+					. ( $link['when'] !== '' ? '<span class="afr-when">' . esc_html( $link['when'] ) . '</span>' : '' )
+					. '</li>';
+			}
+			$extra .= '</ul>';
+		}
+
+		return '<li>'
+			. '<div class="afr-fl-mark" aria-hidden="true">&rarr;</div>'
+			. '<div class="afr-fl-body">'
+			. '<h6>' . esc_html( $item['heading'] ) . '</h6>'
+			. ( $item['body'] !== '' ? '<p>' . esc_html( $item['body'] ) . '</p>' : '' )
+			. $extra
+			. '</div>'
+			. '</li>';
+	}
+
 	// ------------------------------------------------------------------ public
 
-	/** The public version closes with the join prompt rather than an engagement block. */
-	public static function join_gate( array $entry ): string {
-		$community = self::community_article( self::community_name( $entry ) );
-		$join      = self::link( 'join' ) ?: self::default_join_url();
+	/**
+	 * The public version's join prompt, as data.
+	 *
+	 * @return array{url:string,community:string,bypass:?array}
+	 */
+	public static function join_data( array $entry ): array {
+		return [
+			'url'       => self::link( 'join' ) ?: self::default_join_url(),
+			'community' => self::community_article( self::community_name( $entry ) ),
+			// While the beta bypass is on, offer a way past this prompt too.
+			'bypass'    => AFR_Bypass::button_data( 'View the full report anyway' ),
+		];
+	}
 
+	/** The public version closes with the join prompt rather than an engagement block. */
+	public static function join_html( array $join ): string {
 		return '<div class="afr-gate">'
 			. '<p class="afr-gate-lock">Read the full report</p>'
 			. '<h5 class="afr-gate-title">' . sprintf(
 				/* translators: %s: community name, with article where it reads naturally */
 				esc_html__( 'Join the Assemble network to read this report in full — and the rest of our peer intelligence from %s.', 'assemble-content' ),
-				esc_html( $community )
+				esc_html( (string) ( $join['community'] ?? '' ) )
 			) . '</h5>'
-			. ( $join ? self::button( $join, 'Join the Assemble network', '', true ) : '' )
-			// While the beta bypass is on, offer a way past this prompt too.
-			. AFR_Bypass::button( 'View the full report anyway' )
+			. ( ! empty( $join['url'] ) ? self::button( $join['url'], 'Join the Assemble network', '', true ) : '' )
+			. AFR_Bypass::button_html( $join['bypass'] ?? null )
 			. '</div>';
 	}
 
@@ -272,12 +370,14 @@ class AFR_Engagement {
 	/**
 	 * Other reports sharing this one's communities, newest first, that the current
 	 * visitor is actually allowed to open.
+	 *
+	 * @return array<int,array{url:string,title:string,when:string,id:int}>
 	 */
-	private static function related_reports( int $post_id, int $limit = 3 ): string {
+	private static function related_reports( int $post_id, int $limit = 3 ): array {
 		$terms = wp_get_object_terms( $post_id, AFR_CPT::TAXONOMY, [ 'fields' => 'ids' ] );
 
 		if ( is_wp_error( $terms ) || ! $terms ) {
-			return '';
+			return [];
 		}
 
 		$posts = get_posts(
@@ -289,7 +389,7 @@ class AFR_Engagement {
 				'orderby'          => 'date',
 				'order'            => 'DESC',
 				'suppress_filters' => true,
-				'tax_query'        => [
+				'tax_query'        => [ // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.tax_query_tax_query -- one indexed term lookup.
 					[
 						'taxonomy' => AFR_CPT::TAXONOMY,
 						'field'    => 'term_id',
@@ -299,8 +399,7 @@ class AFR_Engagement {
 			]
 		);
 
-		$rows = '';
-		$used = 0;
+		$rows = [];
 
 		foreach ( $posts as $post ) {
 			// Never advertise a report the visitor would be refused.
@@ -308,45 +407,41 @@ class AFR_Engagement {
 				continue;
 			}
 
-			$rows .= '<li>'
-				. self::anchor( (string) get_permalink( $post ), get_the_title( $post ) )
-				. '<span class="afr-when">' . esc_html( get_the_date( 'M j, Y', $post ) ) . '</span>'
-				. '</li>';
+			$rows[] = [
+				'url'   => (string) get_permalink( $post ),
+				'title' => get_the_title( $post ),
+				'when'  => (string) get_the_date( 'M j, Y', $post ),
+				'id'    => (int) $post->ID,
+			];
 
-			if ( ++$used >= $limit ) {
+			if ( count( $rows ) >= $limit ) {
 				break;
 			}
 		}
 
-		return $rows === '' ? '' : '<ul class="afr-fl-links">' . $rows . '</ul>';
+		return $rows;
 	}
 
-	/** Upcoming sessions, if any have been configured. */
-	private static function upcoming(): string {
+	/**
+	 * Upcoming sessions, if any have been configured.
+	 *
+	 * @return array<int,array{url:string,title:string,when:string}>
+	 */
+	private static function upcoming(): array {
 		$links = self::links();
 		$items = $links['upcoming'] ?? [];
+		$rows  = [];
 
-		if ( ! is_array( $items ) || ! $items ) {
-			return '';
-		}
-
-		$rows = '';
-		foreach ( $items as $item ) {
+		foreach ( is_array( $items ) ? $items : [] as $item ) {
 			$title = (string) ( $item['title'] ?? '' );
 			$url   = (string) ( $item['url'] ?? '' );
 
-			if ( $title === '' || $url === '' ) {
-				continue;
+			if ( $title !== '' && $url !== '' ) {
+				$rows[] = [ 'url' => $url, 'title' => $title, 'when' => (string) ( $item['when'] ?? '' ) ];
 			}
-
-			$rows .= '<li>' . self::anchor( $url, $title );
-			if ( ! empty( $item['when'] ) ) {
-				$rows .= '<span class="afr-when">' . esc_html( (string) $item['when'] ) . '</span>';
-			}
-			$rows .= '</li>';
 		}
 
-		return $rows === '' ? '' : '<ul class="afr-fl-links">' . $rows . '</ul>';
+		return $rows;
 	}
 
 	private static function community_name( array $entry ): string {
@@ -356,15 +451,22 @@ class AFR_Engagement {
 		return $name !== '' ? $name : 'the community';
 	}
 
-	private static function item( string $heading, string $body, string $extra ): string {
-		return '<li>'
-			. '<div class="afr-fl-mark" aria-hidden="true">&rarr;</div>'
-			. '<div class="afr-fl-body">'
-			. '<h6>' . esc_html( $heading ) . '</h6>'
-			. ( $body !== '' ? '<p>' . wp_kses( $body, [] ) . '</p>' : '' )
-			. $extra
-			. '</div>'
-			. '</li>';
+	private static function item( string $key, string $heading, string $body, array $actions = [], array $links = [] ): array {
+		return [
+			'key'     => $key,
+			'heading' => $heading,
+			'body'    => $body,
+			'actions' => $actions,
+			'links'   => $links,
+		];
+	}
+
+	private static function action( string $url, string $label, string $variant ): array {
+		return [ 'url' => $url, 'label' => $label, 'variant' => $variant ];
+	}
+
+	private static function block( string $key, string $title, array $items, ?array $lock = null ): array {
+		return [ 'key' => $key, 'title' => $title, 'items' => $items, 'lock' => $lock ];
 	}
 
 	private static function wrap( string $title, array $items ): string {

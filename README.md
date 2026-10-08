@@ -6,6 +6,12 @@ Field Reports are the first content type. Others (playbooks next) are added as e
 
 Synced post types are hidden from wp-admin (`show_ui => false`) and never exposed over REST. The only admin screen is **Settings → Assemble Content**. The plugin is site-agnostic: the public site (theassemble.com) uses it now, and the Member Center will install a tagged release later.
 
+## Rendering for a theme
+
+Each request is rendered for one audience view (standard, council, delegate, public or denied). A theme that wants its own markup calls `AFR_Renderer::view_model( $post_id )`, which returns the resolved view and **only the sections that view may show**, as data or plugin-rendered Rich Text HTML (the shapes are documented on the method). The theme renders what it gets and never re-derives audiences. It returns false from `afr_filter_the_content` for the single pages it renders itself; any stray `the_content` call there then gets the teaser, and the plugin's document styles aren't enqueued. Archives, feeds and the stored `post_content` are unaffected.
+
+Without a theme that does this, the plugin renders its own `.afr-doc` document through `the_content`, formatted from the same sections.
+
 Formerly `assemble-field-reports`. Internal names (`afr_*` options, filters and post meta, `AFR_*` classes) are unchanged, so existing sites switch over without a data migration. Never activate both plugins at once.
 
 ## WP-CLI
@@ -39,9 +45,11 @@ Local only (wp-env), against a fake Delivery API; nothing real is fetched or cha
 ```
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/sync-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/fingerprint.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/view-model-test.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/render-snapshot.php
 ```
 
-`sync-test.php` covers paging (150 entries), failed, short and shifted pages (nothing drafted), real unpublishing (drafted), and type isolation. `fingerprint.php` hashes every synced post so you can prove a refactor changed nothing: run it, `sync --all --force`, run it again, diff.
+`sync-test.php` covers paging (150 entries), failed, short and shifted pages (nothing drafted), real unpublishing (drafted), and type isolation. `fingerprint.php` hashes every synced post so you can prove a refactor changed nothing: run it, `sync --all --force`, run it again, diff. `view-model-test.php` checks, for every synced report and view, that only the allowed sections are present and that no members-only sentence reaches the public or denied view (plus a positive control, anonymous and admin `?afr_as=` resolution, the `afr_filter_the_content` opt-out and the bypass). `render-snapshot.php` hashes every view's HTML (pass `full` for the HTML), to diff before and after a renderer change.
 
 ## Deploys
 

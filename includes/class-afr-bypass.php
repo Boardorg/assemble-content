@@ -122,14 +122,35 @@ class AFR_Bypass {
 
 	/** The opt-in button shown inside the gate. */
 	public static function button( string $label = 'View the full report anyway' ): string {
+		return self::button_html( self::button_data( $label ) );
+	}
+
+	/**
+	 * The opt-in button as data, for a theme that prints its own markup.
+	 *
+	 * @return array{url:string,label:string}|null Null unless the button mode is offering it.
+	 */
+	public static function button_data( string $label = 'View the full report anyway' ): ?array {
 		if ( ! self::offers_button() ) {
+			return null;
+		}
+
+		return [
+			'url'   => add_query_arg( self::QUERY_ARG, '1' ),
+			'label' => $label,
+		];
+	}
+
+	/** The plugin's markup for button_data(). */
+	public static function button_html( ?array $button ): string {
+		if ( ! $button ) {
 			return '';
 		}
 
 		return sprintf(
 			'<a class="afr-btn afr-btn--bypass" href="%s" rel="nofollow">%s</a>',
-			esc_url( add_query_arg( self::QUERY_ARG, '1' ) ),
-			esc_html( $label )
+			esc_url( $button['url'] ),
+			esc_html( $button['label'] )
 		);
 	}
 

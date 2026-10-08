@@ -129,9 +129,18 @@ class AFR_Query {
 	 * @return array<int,array{name:string,slug:string}>
 	 */
 	public static function topics( int $post_id ): array {
+		return self::entry_topics( AFR_Renderer::data( $post_id ) );
+	}
+
+	/**
+	 * Topics from a decoded entry, in the writer's order.
+	 *
+	 * @return array<int,array{name:string,slug:string}>
+	 */
+	public static function entry_topics( ?array $entry ): array {
 		$topics = [];
 
-		foreach ( (array) AFR_Contentful::field( AFR_Renderer::data( $post_id ), 'topics', [] ) as $topic ) {
+		foreach ( (array) AFR_Contentful::field( $entry, 'topics', [] ) as $topic ) {
 			$name = trim( (string) ( AFR_Contentful::field( is_array( $topic ) ? $topic : null, 'name' ) ?? '' ) );
 			if ( $name !== '' ) {
 				$topics[] = [
