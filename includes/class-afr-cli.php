@@ -320,4 +320,34 @@ class AFR_CLI {
 
 		WP_CLI\Utils\format_items( 'table', $rows, array_merge( [ 'post', 'slug', 'status' ], $audiences ) );
 	}
+
+	/**
+	 * Print a signed draft-preview link for one entry: anyone with it can read
+	 * the latest draft until it expires.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <entry-id>
+	 * : Contentful entry ID.
+	 *
+	 * [--days=<days>]
+	 * : How long the link works. Default 7, at most 30.
+	 *
+	 * [--view=<view>]
+	 * : standard, council, delegate, public or denied. Default standard.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp assemble-content preview-link fieldreport-aeo-benchmarking-20260708
+	 *
+	 * @subcommand preview-link
+	 */
+	public function preview_link( array $args, array $assoc ): void {
+		if ( ! AFR_Preview::is_configured() ) {
+			WP_CLI::warning( 'No preview token is stored, so the link will show "not set up" until one is.' );
+		}
+
+		$days = max( 1, min( 30, (int) ( $assoc['days'] ?? 7 ) ) );
+		WP_CLI::line( AFR_Preview::signed_url( (string) $args[0], $days * DAY_IN_SECONDS, sanitize_key( (string) ( $assoc['view'] ?? '' ) ) ) );
+	}
 }

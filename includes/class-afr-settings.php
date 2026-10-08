@@ -1,7 +1,7 @@
 <?php
 /**
  * Configuration. Values resolve in this order:
- *   1. wp-config.php constants (AFR_SPACE_ID, AFR_ENVIRONMENT, AFR_DELIVERY_TOKEN, AFR_WEBHOOK_SECRET)
+ *   1. wp-config.php constants (AFR_SPACE_ID, AFR_ENVIRONMENT, AFR_DELIVERY_TOKEN, AFR_PREVIEW_TOKEN, AFR_WEBHOOK_SECRET)
  *   2. the `afr_settings` option (set via `wp option patch` or the settings screen)
  *
  * The audience -> WordPress roles map lives here too. Nothing in Contentful knows
@@ -43,6 +43,7 @@ class AFR_Settings {
 			'space_id'       => self::resolve( 'AFR_SPACE_ID', $stored, 'space_id' ),
 			'environment'    => self::resolve( 'AFR_ENVIRONMENT', $stored, 'environment' ) ?: 'master',
 			'delivery_token' => self::resolve( 'AFR_DELIVERY_TOKEN', $stored, 'delivery_token' ),
+			'preview_token'  => self::resolve( 'AFR_PREVIEW_TOKEN', $stored, 'preview_token' ),
 			'webhook_secret' => self::resolve( 'AFR_WEBHOOK_SECRET', $stored, 'webhook_secret' ),
 		];
 	}
@@ -116,11 +117,12 @@ class AFR_Settings {
 			'space_id'       => sanitize_text_field( $input['space_id'] ?? '' ),
 			'environment'    => sanitize_text_field( $input['environment'] ?? '' ),
 			'delivery_token' => sanitize_text_field( $input['delivery_token'] ?? '' ),
+			'preview_token'  => sanitize_text_field( $input['preview_token'] ?? '' ),
 			'webhook_secret' => sanitize_text_field( $input['webhook_secret'] ?? '' ),
 		];
 
 		// Blank token/secret fields mean "leave as-is" so the form never wipes them.
-		foreach ( [ 'delivery_token', 'webhook_secret' ] as $secret ) {
+		foreach ( [ 'delivery_token', 'preview_token', 'webhook_secret' ] as $secret ) {
 			if ( $clean[ $secret ] === '' && ! empty( $existing[ $secret ] ) ) {
 				$clean[ $secret ] = $existing[ $secret ];
 			}
@@ -172,6 +174,7 @@ class AFR_Settings {
 					<?php endif; ?>
 				</td></tr>
 				<tr><th>Webhook URL</th><td><code><?php echo esc_html( $hook_url ); ?></code></td></tr>
+				<tr><th>Draft preview</th><td><?php echo $s['preview_token'] ? 'on — register this as the Field Report preview URL in Contentful (Settings → Content preview):' : '<strong>off</strong> — needs a Content Preview API token. Preview URL to register once it is set:'; ?><br><code><?php echo esc_html( AFR_Preview::contentful_url_template() ); ?></code></td></tr>
 				<tr><th>Webhook secret</th><td><?php echo $s['webhook_secret'] ? 'set — send it as the <code>X-AFR-Secret</code> header' : '<strong>not set</strong> — webhook is disabled until it is'; ?></td></tr>
 				</tbody>
 			</table>
@@ -192,6 +195,10 @@ class AFR_Settings {
 					<tr>
 						<th scope="row"><label for="afr_token">Delivery token</label></th>
 						<td><input name="<?php echo esc_attr( self::OPTION ); ?>[delivery_token]" id="afr_token" type="password" class="regular-text" value="" autocomplete="off" placeholder="<?php echo $s['delivery_token'] ? '•••••• stored' : 'CDA token'; ?>"></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="afr_preview_token">Preview token</label></th>
+						<td><input name="<?php echo esc_attr( self::OPTION ); ?>[preview_token]" id="afr_preview_token" type="password" class="regular-text" value="" autocomplete="off" placeholder="<?php echo $s['preview_token'] ? '•••••• stored' : 'CPA token (draft preview)'; ?>"></td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="afr_secret">Webhook secret</label></th>

@@ -12,6 +12,7 @@ defined( 'ABSPATH' ) || exit;
 class AFR_Contentful {
 
 	private const BASE       = 'https://cdn.contentful.com';
+	private const PREVIEW    = 'https://preview.contentful.com';
 	private const MAX_DEPTH  = 4;
 	private const TIMEOUT    = 20;
 
@@ -141,19 +142,38 @@ class AFR_Contentful {
 	}
 
 	/**
+	 * Fetch one entry's latest draft from the Preview API, links resolved. Used
+	 * only for draft preview: never stored, never synced.
+	 */
+	public static function get_preview_entry( string $entry_id ): ?array {
+		$result = self::get_entries(
+			[
+				'sys.id'  => $entry_id,
+				'include' => 3,
+				'limit'   => 1,
+			],
+			true
+		);
+
+		return $result['items'][0] ?? null;
+	}
+
+	/**
 	 * @param array<string,string|int> $query
+	 * @param bool                     $preview Read drafts from the Preview API (CPA) instead of the Delivery API.
 	 * @return array{items: array<int,array>, error: string, total: int}
 	 */
-	public static function get_entries( array $query ): array {
+	public static function get_entries( array $query, bool $preview = false ): array {
 		$settings = AFR_Settings::all();
+		$token    = $preview ? $settings['preview_token'] : $settings['delivery_token'];
 
-		if ( ! AFR_Settings::is_configured() ) {
-			return [ 'items' => [], 'error' => 'Contentful space ID or delivery token is not configured.', 'total' => 0 ];
+		if ( $settings['space_id'] === '' || $token === '' ) {
+			return [ 'items' => [], 'error' => $preview ? 'Contentful space ID or preview token is not configured.' : 'Contentful space ID or delivery token is not configured.', 'total' => 0 ];
 		}
 
 		$url = sprintf(
 			'%s/spaces/%s/environments/%s/entries',
-			self::BASE,
+			$preview ? self::PREVIEW : self::BASE,
 			rawurlencode( $settings['space_id'] ),
 			rawurlencode( $settings['environment'] )
 		);
@@ -163,7 +183,7 @@ class AFR_Contentful {
 			[
 				'timeout' => self::TIMEOUT,
 				'headers' => [
-					'Authorization' => 'Bearer ' . $settings['delivery_token'],
+					'Authorization' => 'Bearer ' . $token,
 					'Accept'        => 'application/json',
 				],
 			]

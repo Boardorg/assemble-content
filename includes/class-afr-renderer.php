@@ -221,7 +221,25 @@ class AFR_Renderer {
 			];
 		}
 
-		$view     = AFR_Audience::view_for( $post_id );
+		$model            = self::view_model_for( $entry, AFR_Audience::view_for( $post_id ), $post_id );
+		$model['notices'] = [
+			'preview' => AFR_Audience::preview_links( $post_id ),
+			'bypass'  => AFR_Bypass::banner(),
+		];
+
+		return $model;
+	}
+
+	/**
+	 * The same view model for an entry and a view chosen by the caller, with no
+	 * post behind it (draft preview). Sections that need a post (engagement) are
+	 * left out when $post_id is 0. Callers decide the view, so only use this
+	 * where access has already been settled (AFR_Preview).
+	 *
+	 * @return array{view:string,post_id:int,sections:array<string,mixed>,words:int,notices:array{preview:string,bypass:string}}
+	 */
+	public static function view_model_for( array $entry, string $view, int $post_id = 0 ): array {
+		$view     = isset( self::VIEW_SECTIONS[ $view ] ) ? $view : AFR_Audience::VIEW_DENIED;
 		$sections = self::sections( $post_id, $entry, $view );
 
 		return [
@@ -229,10 +247,7 @@ class AFR_Renderer {
 			'post_id'  => $post_id,
 			'sections' => $sections,
 			'words'    => self::words( $sections ),
-			'notices'  => [
-				'preview' => AFR_Audience::preview_links( $post_id ),
-				'bypass'  => AFR_Bypass::banner(),
-			],
+			'notices'  => [ 'preview' => '', 'bypass' => '' ],
 		];
 	}
 

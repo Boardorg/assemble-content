@@ -12,6 +12,10 @@ Each request is rendered for one audience view (standard, council, delegate, pub
 
 Without a theme that does this, the plugin renders its own `.afr-doc` document through `the_content`, formatted from the same sections.
 
+## Draft preview
+
+`/?afr_preview=<entry id>` renders an entry's latest draft from Contentful's Preview API through the same view model (and the theme's template, via the `afr_render_preview` action). Nothing is stored or synced; the page is sent noindex and uncacheable. Open to users with `manage_options` (filter `afr_preview_capability`), who can switch views with `&afr_view=` and copy a share link, and to anyone with a signed link (HMAC of the entry ID and expiry with the site's salts, 7 days by default): `wp assemble-content preview-link <entry-id> [--days=7]`. Needs a Content Preview API token in `afr_settings[preview_token]` (or `AFR_PREVIEW_TOKEN`). Register `<site>/?afr_preview={entry.sys.id}` in Contentful → Settings → Content preview.
+
 Formerly `assemble-field-reports`. Internal names (`afr_*` options, filters and post meta, `AFR_*` classes) are unchanged, so existing sites switch over without a data migration. Never activate both plugins at once.
 
 ## WP-CLI
@@ -24,6 +28,7 @@ wp assemble-content sync --type=<fieldReport|field_report> [--force] [--dry-run]
 wp assemble-content sync --entry=<id> [--force]
 wp assemble-content matrix
 wp assemble-content audiences
+wp assemble-content preview-link <entry-id> [--days=7] [--view=standard]
 ```
 
 Full fetches page through the Delivery API (ordered by `sys.id` so pages are stable). A sync moves a post to draft only when its type's fetch was complete; a failed or partial fetch drafts nothing, and syncing one type never touches another.
@@ -47,9 +52,10 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/test
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/fingerprint.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/view-model-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/render-snapshot.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/preview-test.php
 ```
 
-`sync-test.php` covers paging (150 entries), failed, short and shifted pages (nothing drafted), real unpublishing (drafted), and type isolation. `fingerprint.php` hashes every synced post so you can prove a refactor changed nothing: run it, `sync --all --force`, run it again, diff. `view-model-test.php` checks, for every synced report and view, that only the allowed sections are present and that no members-only sentence reaches the public or denied view (plus a positive control, anonymous and admin `?afr_as=` resolution, the `afr_filter_the_content` opt-out and the bypass). `render-snapshot.php` hashes every view's HTML (pass `full` for the HTML), to diff before and after a renderer change.
+`sync-test.php` covers paging (150 entries), failed, short and shifted pages (nothing drafted), real unpublishing (drafted), and type isolation. `fingerprint.php` hashes every synced post so you can prove a refactor changed nothing: run it, `sync --all --force`, run it again, diff. `view-model-test.php` checks, for every synced report and view, that only the allowed sections are present and that no members-only sentence reaches the public or denied view (plus a positive control, anonymous and admin `?afr_as=` resolution, the `afr_filter_the_content` opt-out and the bypass). `render-snapshot.php` hashes every view's HTML (pass `full` for the HTML), to diff before and after a renderer change. `preview-test.php` runs draft preview against a fake Preview API: no token (503), anonymous (403, no request made), staff, each view's allowed sections, signed links (valid, tampered, extended, reused, expired), non-report entries (404), and that nothing is written.
 
 ## Deploys
 
