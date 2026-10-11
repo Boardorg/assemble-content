@@ -12,6 +12,8 @@ Each request is rendered for one audience view (standard, council, delegate, pub
 
 Without a theme that does this, the plugin renders its own `.afr-doc` document through `the_content`, formatted from the same sections.
 
+**Full text for Public reports (1.7.0, opt-in).** A site that runs a free-read meter can return true from `afr_public_full_text` (`( bool $full, int $post_id )`, default false). The public view of a report ticked Public then also carries its body sections (never engagement), and the view model's `full_text` is true; the site decides what to show. It has no effect on any other view, so members-only reports are never affected, and the plugin's own HTML render is unchanged. The public site turns it on (`assemble-core`); the Member Center needn't.
+
 ## Which reports a site shows: the site channel
 
 Each Field Report has a **Show on** field in Contentful, with checkboxes for `Member Center` and `Public website`. Each site declares its channel, and only reports ticked for it sync there. The channel comes from the `AFR_SITE_CHANNEL` constant (use this on VIP) or `afr_settings[site_channel]`; the `afr_site_channel` filter can override either.
@@ -76,11 +78,12 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/test
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/preview-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/groups-topics-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/channel-test.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/public-full-text-test.php
 ```
 
 `channel-test.php` runs real syncs with the channel forced, covering: set, unset (nothing drafted), an unticked entry through the webhook path (drafted), and a channel with no reports (everything drafted). It restores the reports afterwards. `groups-topics-test.php` checks the group terms, topic and practice-area meta against each entry, `for_groups()`, `afr_topic_taxonomy` (existing terms only) and `afr_synced`.
 
-`sync-test.php` covers paging (150 entries), failed, short and shifted pages (nothing drafted), real unpublishing (drafted), and type isolation. `fingerprint.php` hashes every synced post so you can prove a refactor changed nothing: run it, `sync --all --force`, run it again, diff. `view-model-test.php` checks, for every synced report and view, that only the allowed sections are present and that no members-only sentence reaches the public or denied view (plus a positive control, anonymous and admin `?afr_as=` resolution, the `afr_filter_the_content` opt-out and the bypass). `render-snapshot.php` hashes every view's HTML (pass `full` for the HTML), to diff before and after a renderer change. `preview-test.php` runs draft preview against a fake Preview API: no token (503), anonymous (403, no request made), staff, each view's allowed sections, signed links (valid, tampered, extended, reused, expired), non-report entries (404), and that nothing is written.
+`sync-test.php` covers paging (150 entries), failed, short and shifted pages (nothing drafted), real unpublishing (drafted), and type isolation. `fingerprint.php` hashes every synced post so you can prove a refactor changed nothing: run it, `sync --all --force`, run it again, diff. `view-model-test.php` checks, for every synced report and view, that only the allowed sections are present and that no members-only sentence reaches the public or denied view (plus a positive control, anonymous and admin `?afr_as=` resolution, the `afr_filter_the_content` opt-out and the bypass). `public-full-text-test.php` checks `afr_public_full_text`: off changes nothing, on adds the body (no engagement) to a Public report's public view only, a members-only report stays denied, and the plugin render is untouched. `render-snapshot.php` hashes every view's HTML (pass `full` for the HTML), to diff before and after a renderer change. `preview-test.php` runs draft preview against a fake Preview API: no token (503), anonymous (403, no request made), staff, each view's allowed sections, signed links (valid, tampered, extended, reused, expired), non-report entries (404), and that nothing is written.
 
 ## Deploys
 

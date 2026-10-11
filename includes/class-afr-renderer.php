@@ -60,6 +60,13 @@ class AFR_Renderer {
 		AFR_Audience::VIEW_DENIED   => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'source_line', 'gate' ],
 	];
 
+	/**
+	 * Body sections a site may add to the public view of a report ticked Public,
+	 * through `afr_public_full_text` (default off). Never engagement, and never
+	 * for a report that isn't Public: the view must already be `public`.
+	 */
+	private const PUBLIC_FULL_SECTIONS = [ 'source_line', 'byline', 'story_in_brief', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'community', 'author' ];
+
 	/** Sections counted towards the reading time. */
 	private const READING_SECTIONS = [ 'story_in_brief', 'picking_up', 'pullquote', 'focus', 'takeaways', 'setup' ];
 
@@ -203,25 +210,52 @@ class AFR_Renderer {
 	 *   join           { url, community, bypass: button|null } (public)
 	 *   gate           { sign_in_url, bypass: button|null } (denied)
 	 *
+	 * - `full_text`: true when the site opted in (filter `afr_public_full_text`)
+	 *   to give the public view of a Public report its body sections as well
+	 *   (PUBLIC_FULL_SECTIONS; never engagement). For a site's free-read meter.
+	 *   Always false for every other view.
+	 *
 	 *   person = { name, role, organization, bio, image: asset|null, image_url }
 	 *   button = { url, label }
 	 *
-	 * @return array{view:string,post_id:int,sections:array<string,mixed>,words:int,notices:array{preview:string,bypass:string}}
+	 * @return array{view:string,post_id:int,sections:array<string,mixed>,words:int,full_text:bool,notices:array{preview:string,bypass:string}}
 	 */
 	public static function view_model( int $post_id ): array {
 		$entry = self::data( $post_id );
 
 		if ( ! $entry ) {
 			return [
-				'view'     => '',
-				'post_id'  => $post_id,
-				'sections' => [],
-				'words'    => 0,
-				'notices'  => [ 'preview' => '', 'bypass' => '' ],
+				'view'      => '',
+				'post_id'   => $post_id,
+				'sections'  => [],
+				'words'     => 0,
+				'full_text' => false,
+				'notices'   => [ 'preview' => '', 'bypass' => '' ],
 			];
 		}
 
-		$model            = self::view_model_for( $entry, AFR_Audience::view_for( $post_id ), $post_id );
+		$model = self::view_model_for( $entry, AFR_Audience::view_for( $post_id ), $post_id );
+
+		/**
+		 * Give the public view of a report ticked Public its full text (a site's
+		 * free-read meter decides what to show). Default false. Has no effect on
+		 * any other view, so members-only reports are never affected.
+		 *
+		 * @param bool $full    False.
+		 * @param int  $post_id
+		 */
+		if ( AFR_Audience::VIEW_PUBLIC === $model['view'] && apply_filters( 'afr_public_full_text', false, $post_id ) ) {
+			foreach ( self::PUBLIC_FULL_SECTIONS as $key ) {
+				$value = self::section( $key, $post_id, $entry, AFR_Audience::VIEW_STANDARD );
+				if ( $value !== null && $value !== '' && $value !== [] ) {
+					$model['sections'][ $key ] = $value;
+				}
+			}
+			$model['full_text'] = true;
+			$model['words']     = self::words( array_diff_key( $model['sections'], [ 'setup' => true ] ) );
+		}
+
+
 		$model['notices'] = [
 			'preview' => AFR_Audience::preview_links( $post_id ),
 			'bypass'  => AFR_Bypass::banner(),
@@ -236,18 +270,19 @@ class AFR_Renderer {
 	 * left out when $post_id is 0. Callers decide the view, so only use this
 	 * where access has already been settled (AFR_Preview).
 	 *
-	 * @return array{view:string,post_id:int,sections:array<string,mixed>,words:int,notices:array{preview:string,bypass:string}}
+	 * @return array{view:string,post_id:int,sections:array<string,mixed>,words:int,full_text:bool,notices:array{preview:string,bypass:string}}
 	 */
 	public static function view_model_for( array $entry, string $view, int $post_id = 0 ): array {
 		$view     = isset( self::VIEW_SECTIONS[ $view ] ) ? $view : AFR_Audience::VIEW_DENIED;
 		$sections = self::sections( $post_id, $entry, $view );
 
 		return [
-			'view'     => $view,
-			'post_id'  => $post_id,
-			'sections' => $sections,
-			'words'    => self::words( $sections ),
-			'notices'  => [ 'preview' => '', 'bypass' => '' ],
+			'view'      => $view,
+			'post_id'   => $post_id,
+			'sections'  => $sections,
+			'words'     => self::words( $sections ),
+			'full_text' => false,
+			'notices'   => [ 'preview' => '', 'bypass' => '' ],
 		];
 	}
 
