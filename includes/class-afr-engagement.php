@@ -445,7 +445,8 @@ class AFR_Engagement {
 	}
 
 	private static function community_name( array $entry ): string {
-		$community = AFR_Contentful::field( $entry, 'primaryCommunity' );
+		// Field Reports name it primaryCommunity; playbooks, community.
+		$community = AFR_Contentful::field( $entry, 'primaryCommunity' ) ?? AFR_Contentful::field( $entry, 'community' );
 		$name      = is_array( $community ) ? (string) ( AFR_Contentful::field( $community, 'name' ) ?? '' ) : '';
 
 		return $name !== '' ? $name : 'the community';

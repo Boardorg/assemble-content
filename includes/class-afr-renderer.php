@@ -127,13 +127,22 @@ class AFR_Renderer {
 	public static function filter_content( string $content ): string {
 		$post = get_post();
 
-		if ( ! $post || $post->post_type !== AFR_CPT::POST_TYPE ) {
+		if ( ! $post ) {
 			return $content;
 		}
 
 		// Leave the editor and REST alone; this is a presentation-layer filter.
 		if ( is_admin() && ! wp_doing_ajax() ) {
 			return $content;
+		}
+
+		// Other gated synced types (playbooks) have no plugin document: the theme
+		// renders them from their own view model, and the_content anywhere (single
+		// page, archive, feed, search) is the teaser. Never the stored body.
+		if ( $post->post_type !== AFR_CPT::POST_TYPE ) {
+			return self::is_gated_post_type( $post->post_type )
+				? '<p class="afr-teaser">' . esc_html( $post->post_excerpt ) . '</p>'
+				: $content;
 		}
 
 		$data = self::data( $post->ID );
@@ -157,6 +166,17 @@ class AFR_Renderer {
 		return AFR_Audience::preview_links( $post->ID )
 			. AFR_Bypass::banner()
 			. self::render( $post->ID, $data, $view );
+	}
+
+	/** Is this post type synced by the registry and gated? */
+	public static function is_gated_post_type( string $post_type ): bool {
+		foreach ( AFR_Types::all() as $type ) {
+			if ( $type['post_type'] === $post_type ) {
+				return (bool) $type['gated'];
+			}
+		}
+
+		return false;
 	}
 
 	/** The decoded Contentful payload for a post, or null. */
@@ -364,9 +384,9 @@ class AFR_Renderer {
 
 	// ------------------------------------------------------------ section data
 
-	/** The primary community: name, slug, practice area and logo. */
-	private static function community_data( array $entry ): ?array {
-		$community = AFR_Contentful::field( $entry, 'primaryCommunity' );
+	/** The primary community: name, slug, practice area and logo. Playbooks pass 'community'. */
+	public static function community_data( array $entry, string $field = 'primaryCommunity' ): ?array {
+		$community = AFR_Contentful::field( $entry, $field );
 
 		if ( ! is_array( $community ) ) {
 			return null;
@@ -430,7 +450,7 @@ class AFR_Renderer {
 	}
 
 	/** A person, or null without a name. */
-	private static function person( $person ): ?array {
+	public static function person( $person ): ?array {
 		if ( ! is_array( $person ) ) {
 			return null;
 		}
@@ -557,8 +577,8 @@ class AFR_Renderer {
 	}
 
 	/** "About {Community} and Assemble", when the community has boilerplate. */
-	private static function community_about( array $entry ): ?array {
-		$community = AFR_Contentful::field( $entry, 'primaryCommunity' );
+	public static function community_about( array $entry, string $field = 'primaryCommunity' ): ?array {
+		$community = AFR_Contentful::field( $entry, $field );
 
 		if ( ! is_array( $community ) ) {
 			return null;
@@ -604,7 +624,7 @@ class AFR_Renderer {
 	}
 
 	/** The denied view's gate: sign in (when logged out) and the beta bypass. */
-	private static function gate_data(): array {
+	public static function gate_data(): array {
 		return [
 			'sign_in_url' => is_user_logged_in() ? '' : wp_login_url( (string) get_permalink() ),
 			'bypass'      => AFR_Bypass::button_data(),

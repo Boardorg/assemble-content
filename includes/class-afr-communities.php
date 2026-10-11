@@ -90,7 +90,8 @@ class AFR_Communities {
 	 */
 	public static function practice_area_for_post( int $post_id ): string {
 		$entry   = AFR_Renderer::data( $post_id );
-		$primary = AFR_Contentful::field( $entry, 'primaryCommunity' );
+		// Field Reports name it primaryCommunity; playbooks, community.
+		$primary = AFR_Contentful::field( $entry, 'primaryCommunity' ) ?? AFR_Contentful::field( $entry, 'community' );
 
 		$candidates = is_array( $primary ) ? [ $primary ] : [];
 		foreach ( (array) AFR_Contentful::field( $entry, 'additionalCommunities', [] ) as $extra ) {

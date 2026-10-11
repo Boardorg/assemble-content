@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name:       Assemble Content
- * Description:       The Assemble Content feed. Syncs published Contentful entries (Field Reports today) into hidden, gated post types. Webhook-driven, with WP-CLI commands and per-audience rendering.
- * Version:           1.7.0
+ * Description:       The Assemble Content feed. Syncs published Contentful entries (Field Reports and playbooks) into hidden, gated post types. Webhook-driven, with WP-CLI commands and per-audience rendering.
+ * Version:           1.8.0
  * Requires PHP:      8.0
  * Author:            Assemble
  * Text Domain:       assemble-content
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'AFR_VERSION', '1.7.0' );
+define( 'AFR_VERSION', '1.8.0' );
 define( 'AFR_FILE', __FILE__ );
 define( 'AFR_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AFR_URL', plugin_dir_url( __FILE__ ) );
@@ -27,12 +27,14 @@ require_once AFR_DIR . 'includes/class-afr-settings.php';
 require_once AFR_DIR . 'includes/class-afr-cpt.php';
 require_once AFR_DIR . 'includes/class-afr-types.php';
 require_once AFR_DIR . 'includes/class-afr-type-field-report.php';
+require_once AFR_DIR . 'includes/class-afr-type-playbook.php';
 require_once AFR_DIR . 'includes/class-afr-contentful.php';
 require_once AFR_DIR . 'includes/class-afr-richtext.php';
 require_once AFR_DIR . 'includes/class-afr-bypass.php';
 require_once AFR_DIR . 'includes/class-afr-audience.php';
 require_once AFR_DIR . 'includes/class-afr-engagement.php';
 require_once AFR_DIR . 'includes/class-afr-renderer.php';
+require_once AFR_DIR . 'includes/class-afr-playbook.php';
 require_once AFR_DIR . 'includes/class-afr-listing.php';
 require_once AFR_DIR . 'includes/class-afr-features.php';
 require_once AFR_DIR . 'includes/class-afr-communities.php';

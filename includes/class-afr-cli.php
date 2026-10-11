@@ -280,23 +280,24 @@ class AFR_CLI {
 	}
 
 	/**
-	 * Print the per-report audience matrix — which posts are visible to whom.
+	 * Print the audience matrix for every gated type — which posts are visible to whom.
 	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp assemble-content matrix
 	 */
 	public function matrix(): void {
-		$posts = get_posts(
+		$gated = array_column( array_filter( AFR_Types::all(), static fn( $type ) => $type['gated'] ), 'post_type' );
+		$posts = $gated ? get_posts(
 			[
-				'post_type'   => AFR_CPT::POST_TYPE,
+				'post_type'   => $gated,
 				'post_status' => 'any',
-				'numberposts' => -1,
+				'numberposts' => -1, // phpcs:ignore WordPressVIPMinimum.Performance.NoPaging -- WP-CLI only; the matrix lists every gated post.
 			]
-		);
+		) : [];
 
 		if ( ! $posts ) {
-			WP_CLI::warning( 'No Field Reports synced yet.' );
+			WP_CLI::warning( 'Nothing gated synced yet.' );
 
 			return;
 		}
@@ -308,6 +309,7 @@ class AFR_CLI {
 			$allowed = AFR_Audience::report_audiences( $post->ID );
 			$row     = [
 				'post'   => $post->ID,
+				'type'   => $post->post_type,
 				'slug'   => $post->post_name,
 				'status' => $post->post_status,
 			];
@@ -319,7 +321,7 @@ class AFR_CLI {
 			$rows[] = $row;
 		}
 
-		WP_CLI\Utils\format_items( 'table', $rows, array_merge( [ 'post', 'slug', 'status' ], $audiences ) );
+		WP_CLI\Utils\format_items( 'table', $rows, array_merge( [ 'post', 'type', 'slug', 'status' ], $audiences ) );
 	}
 
 	/**

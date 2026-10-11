@@ -3,7 +3,8 @@
  *
  * - Creates the target environment (from master) if it doesn't exist. Never runs against master.
  * - Idempotent: safe to re-run; existing content types are updated in place.
- * - Creates 5 content types: person, community, mdTake, takeaway, fieldReport.
+ * - Creates the content types below: person, community, topicCategory, topic, mdTake,
+ *   fieldReport, playbookCallout, playbook, siteFeature.
  * - Configures the Field Report editor with 4 tabs: Basics, Standard Report,
  *   Newsletter Version, Variations.
  *
@@ -70,6 +71,19 @@ const PRACTICE_AREAS = ['human-resources', 'marketing', 'manufacturing', 'techno
 const TAKEAWAY_RT_VALIDATIONS = [
   { enabledMarks: ['bold', 'italic'], message: 'Only bold and italic are allowed in takeaways.' },
   { enabledNodeTypes: ['ordered-list', 'list-item'], message: 'Takeaways are a numbered list.' },
+]
+
+// A playbook body: chapters (H2), subsections (H3), lists, quotes, links, and
+// Playbook Callout embeds. No H1 (the title is the H1), no tables or images inline.
+// Kinds of box a writer can embed in a playbook body.
+const CALLOUT_KINDS = ['Stat', 'Checklist', 'Checkpoint', 'Note', 'Table', 'Layers']
+
+const PLAYBOOK_RT_VALIDATIONS = [
+  {
+    enabledNodeTypes: ['heading-2', 'heading-3', 'ordered-list', 'unordered-list', 'blockquote', 'hr', 'hyperlink', 'embedded-entry-block'],
+    message: 'Use Heading 2 for chapters and Heading 3 for subsections; embed only Playbook Callouts.',
+  },
+  { nodes: { 'embedded-entry-block': [{ linkContentType: ['playbookCallout'], message: 'Only Playbook Callouts can be embedded.' }] } },
 ]
 
 // ---------- content type definitions ----------
@@ -243,6 +257,75 @@ const contentTypes = [
       { groupId: 'standardReport', name: 'Standard Report', fields: ['mdTakes', 'pickingUpSubhead', 'pickingUpBody', 'charts', 'pullquote', 'focusSubhead', 'focusBody', 'takeawaysStandard'] },
       { groupId: 'newsletterVersion', name: 'Newsletter Version', fields: ['newsletterSetup', 'newsletterFocus', 'newsletterImage', 'takeawaysNewsletter', 'recordingUrl'] },
       { groupId: 'variations', name: 'Variations', fields: ['takeawaysShort', 'socialCopyOverride'] },
+    ],
+  },
+  {
+    id: 'playbookCallout',
+    data: {
+      name: 'Playbook Callout',
+      description: 'A box placed inside a playbook body (Insert → Embed entry): a pull-stat, a checklist, a “good looks like” checkpoint, a note to managers, a two-column table, or the “How the guidance layers” list. The site decides the look; the writer decides the position.',
+      displayField: 'internalTitle',
+      fields: [
+        symbol('internalTitle', 'Internal title', { required: true }),
+        symbol('kind', 'Kind', { required: true, validations: [{ in: CALLOUT_KINDS }] }),
+        symbol('label', 'Label'),
+        symbol('tag', 'Tag'),
+        symbol('stat', 'Stat'),
+        longText('text', 'Text'),
+        { ...base, id: 'items', name: 'Items', type: 'Array', items: { type: 'Symbol', validations: [] } },
+      ],
+    },
+    controls: [
+      { fieldId: 'kind', widgetId: 'dropdown', settings: { helpText: 'Stat: a large figure and one line. Checklist: tick-box items. Checkpoint: “By day 30, good looks like” and a paragraph. Note: a bold lead and a sentence or two. Table: two columns. Layers: a short labelled list, e.g. Phase / Play / Principle.' } },
+      { fieldId: 'label', widgetId: 'singleLine', settings: { helpText: 'The small heading. Checklist: e.g. Checklist. Checkpoint: e.g. By day 30, good looks like. Note: the bold lead, e.g. If the AEO lead reports to you: Table: the two column headings as First: Second. Layers: blank for “How the guidance layers”.' } },
+      { fieldId: 'tag', widgetId: 'singleLine', settings: { helpText: 'Checklist only. A short tag beside the heading, e.g. Days 0–30.' } },
+      { fieldId: 'stat', widgetId: 'singleLine', settings: { helpText: 'Stat only. The figure, e.g. 70%.' } },
+      { fieldId: 'text', widgetId: 'multipleLine', settings: { helpText: 'Stat: the line under the figure. Checkpoint and Note: the paragraph.' } },
+      { fieldId: 'items', widgetId: 'tagEditor', settings: { helpText: 'Checklist: one item each. Table and Layers: one row each, as Label: Value (split at the first colon).' } },
+    ],
+  },
+  {
+    id: 'playbook',
+    data: {
+      name: 'Playbook',
+      description: 'A long-form guide built from peer intelligence. One body: each Heading 2 is a chapter (and a table of contents entry), each Heading 3 a subsection. A Heading 2 with a colon, e.g. “Days 0–30: Diagnose and Orient”, is a phase.',
+      displayField: 'title',
+      fields: [
+        symbol('title', 'Title', { required: true }),
+        symbol('slug', 'Slug', { required: true, validations: [{ unique: true }, { regexp: { pattern: '^[a-z0-9-]+$' } }] }),
+        longText('dek', 'Dek'),
+        symbol('edition', 'Edition'),
+        entryLink('community', 'Community', ['community'], { required: true }),
+        entryLinks('topics', 'Topics', ['topic']),
+        entryLink('author', 'Author', ['person']),
+        entryLink('editor', 'Editor', ['person']),
+        assetLink('featuredImage', 'Featured image'),
+        {
+          ...base, id: 'showOn', name: 'Show on', type: 'Array',
+          items: { type: 'Symbol', validations: [{ in: CHANNELS }] },
+        },
+        {
+          ...base, id: 'availableTo', name: 'Available to', type: 'Array',
+          items: { type: 'Symbol', validations: [{ in: AUDIENCES }] },
+        },
+        richText('body', 'Body', { validations: PLAYBOOK_RT_VALIDATIONS }),
+      ],
+    },
+    controls: [
+      { fieldId: 'slug', widgetId: 'slugEditor', settings: { trackingFieldId: 'title', helpText: 'The page address: /playbooks/<slug>/.' } },
+      { fieldId: 'dek', widgetId: 'multipleLine', settings: { helpText: 'One or two sentences under the title. Also the description in search results and on cards.' } },
+      { fieldId: 'edition', widgetId: 'singleLine', settings: { helpText: 'Shown under the dek, e.g. 2026 Edition.' } },
+      { fieldId: 'community', widgetId: 'entryLinkEditor', settings: { helpText: 'Supplies the breadcrumbs, the colour, the About card and the featured Summit.' } },
+      { fieldId: 'topics', widgetId: 'entryLinksEditor', settings: { helpText: 'One to four topics from this community’s categories.' } },
+      { fieldId: 'author', widgetId: 'entryLinkEditor', settings: { helpText: 'Shown as “Written by”, with the bio at the foot of the playbook.' } },
+      { fieldId: 'editor', widgetId: 'entryLinkEditor', settings: { helpText: 'Shown as “Edited by”. Optional.' } },
+      { fieldId: 'showOn', widgetId: 'checkbox', settings: { helpText: 'Where this playbook appears once published. A site only shows playbooks ticked for it. Who can read it there is still set by Available to.' } },
+      { fieldId: 'availableTo', widgetId: 'checkbox', settings: { helpText: 'Public: the first chapter, then a prompt to join. Other audiences: the complete playbook.' } },
+      { fieldId: 'body', widgetId: 'richTextEditor', settings: { helpText: 'Heading 2 starts a chapter; Heading 3 a subsection. A line in italics straight after a Heading 3 is its subtitle. Pull-stats and the guidance list are Playbook Callout entries (Embed entry).' } },
+    ],
+    tabs: [
+      { groupId: 'basics', name: 'Basics', fields: ['title', 'slug', 'dek', 'edition', 'community', 'topics', 'author', 'editor', 'featuredImage', 'showOn', 'availableTo'] },
+      { groupId: 'bodyTab', name: 'Body', fields: ['body'] },
     ],
   },
   {

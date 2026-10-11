@@ -55,6 +55,20 @@ class AFR_Types {
 					'supports' => [ 'title', 'editor', 'excerpt', 'thumbnail', 'custom-fields' ],
 				],
 			],
+			// Rendered by the site from AFR_Playbook::view_model(); see that class for the gate.
+			'playbook'    => [
+				'post_type'     => AFR_Playbook_Type::POST_TYPE,
+				'label'         => 'Playbooks',
+				'singular'      => 'Playbook',
+				'slug'          => 'playbooks',
+				'include'       => 3,
+				'page_size'     => 50,
+				'gated'         => true,
+				'dependencies'  => [ 'person', 'community', 'topic', 'topicCategory', AFR_Playbook::CALLOUT_TYPE ],
+				'channel_field' => 'showOn',
+				'map'           => [ AFR_Playbook_Type::class, 'map' ],
+				'after_save'    => [ AFR_Playbook_Type::class, 'after_save' ],
+			],
 		];
 
 		/**
