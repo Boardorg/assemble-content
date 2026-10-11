@@ -389,7 +389,7 @@ class AFR_Engagement {
 				'orderby'          => 'date',
 				'order'            => 'DESC',
 				'suppress_filters' => true,
-				'tax_query'        => [ // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.tax_query_tax_query -- one indexed term lookup.
+				'tax_query'        => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query -- one indexed term lookup.
 					[
 						'taxonomy' => AFR_CPT::TAXONOMY,
 						'field'    => 'term_id',
