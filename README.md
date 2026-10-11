@@ -4,13 +4,24 @@ The Assemble Content feed: a WordPress plugin that copies published Contentful e
 
 Field Reports are the first content type. Others (playbooks next) are added as entries in the content-type registry, `AFR_Types` (`includes/class-afr-types.php`), or through the `afr_content_types` filter: post type, URL slug, field mapping, link depth, dependencies and whether it is gated. Fetching, syncing, webhook routing, orphan drafting and the CLI all read that one list.
 
-Synced post types are hidden from wp-admin (`show_ui => false`) and never exposed over REST. The only admin screen is **Settings → Assemble Content**. The plugin is site-agnostic: the public site (theassemble.com) uses it now, and the Member Center will install a tagged release later.
+Synced post types are hidden from wp-admin (`show_ui => false`) and never exposed over REST. The only admin screen is **Settings → Assemble Content**. The plugin is site-agnostic: the public site (theassemble.com) uses it now, and the Member Center installs a tagged release.
 
 ## Rendering for a theme
 
 Each request is rendered for one audience view (standard, council, delegate, public or denied). A theme that wants its own markup calls `AFR_Renderer::view_model( $post_id )`, which returns the resolved view and **only the sections that view may show**, as data or plugin-rendered Rich Text HTML (the shapes are documented on the method). The theme renders what it gets and never re-derives audiences. It returns false from `afr_filter_the_content` for the single pages it renders itself; any stray `the_content` call there then gets the teaser, and the plugin's document styles aren't enqueued. Archives, feeds and the stored `post_content` are unaffected.
 
 Without a theme that does this, the plugin renders its own `.afr-doc` document through `the_content`, formatted from the same sections.
+
+## Topics, practice areas and Member Center groups
+
+Each synced report carries its classification in queryable form, not only inside `_afr_data`:
+
+- **Topics:** `_afr_topic` meta, one row per topic slug. The slugs are the Member Center `content-topic` vocabulary, mirrored in Contentful's `topic` type. A site with its own topic taxonomy returns its name from the `afr_topic_taxonomy` filter (the Member Center returns `'content-topic'`). Each sync then sets that taxonomy's **existing** terms on the report and never creates a term. The site registers the taxonomy for `field_report` itself.
+- **Practice areas:** `_afr_practice_area` meta, one row per area of the report's communities (`human-resources`, `marketing`, `manufacturing`, `technology`, `finance`).
+- **Member Center groups:** a hidden `field_report_mc_group` taxonomy whose terms are the communities' `memberCenterGroups` slugs. `AFR_Query::for_groups( [ 'learning-development', 'talent', … ] )` lists reports for any of those groups. A Network passes its Practice Boards (its `practice_areas` group meta), so every report from those Boards rolls up to it. Like every `AFR_Query` helper, this only lists reports: who may read a body is still decided by `availableTo` and `afr_current_audiences`.
+- **Other hooks:** `AFR_Query::topic_slugs()` and `AFR_Query::groups()` read them back. `AFR_Communities::all()` includes each community's `groups`. The `afr_synced( $post_id, $entry, $content_type )` action fires after every written entry, for site-side mappings such as search indexing.
+
+Run `wp assemble-content sync --all --force` once after upgrading so existing posts get the new terms and meta.
 
 ## Draft preview
 
@@ -53,7 +64,10 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/test
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/view-model-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/render-snapshot.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/preview-test.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/groups-topics-test.php
 ```
+
+`groups-topics-test.php` checks the group terms, topic and practice-area meta against each entry, `for_groups()`, `afr_topic_taxonomy` (existing terms only) and `afr_synced`.
 
 `sync-test.php` covers paging (150 entries), failed, short and shifted pages (nothing drafted), real unpublishing (drafted), and type isolation. `fingerprint.php` hashes every synced post so you can prove a refactor changed nothing: run it, `sync --all --force`, run it again, diff. `view-model-test.php` checks, for every synced report and view, that only the allowed sections are present and that no members-only sentence reaches the public or denied view (plus a positive control, anonymous and admin `?afr_as=` resolution, the `afr_filter_the_content` opt-out and the bypass). `render-snapshot.php` hashes every view's HTML (pass `full` for the HTML), to diff before and after a renderer change. `preview-test.php` runs draft preview against a fake Preview API: no token (503), anonymous (403, no request made), staff, each view's allowed sections, signed links (valid, tampered, extended, reused, expired), non-report entries (404), and that nothing is written.
 

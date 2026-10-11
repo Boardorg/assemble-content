@@ -230,6 +230,12 @@ class AFR_Sync {
 			call_user_func( $type['after_save'], $post_id, $entry );
 		}
 
+		/**
+		 * After an entry is written to its post: a site's seam for its own
+		 * mappings (search indexing, extra terms). Not fired for unchanged entries.
+		 */
+		do_action( 'afr_synced', $post_id, $entry, $content_type );
+
 		return [
 			'status'   => $status,
 			'message'  => sprintf( '%s #%d %s (rev %s)', $status, $post_id, $entry_id, $revision ),

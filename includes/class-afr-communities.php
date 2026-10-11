@@ -47,6 +47,7 @@ class AFR_Communities {
 				'name'          => $name,
 				'short_name'    => (string) ( AFR_Contentful::field( $entry, 'shortName' ) ?? '' ),
 				'practice_area' => sanitize_key( (string) ( AFR_Contentful::field( $entry, 'practiceArea' ) ?? '' ) ),
+				'groups'        => array_values( array_filter( array_map( 'sanitize_title', (array) ( AFR_Contentful::field( $entry, 'memberCenterGroups' ) ?? [] ) ) ) ),
 				'boilerplate'   => (string) ( AFR_Contentful::field( $entry, 'boilerplate' ) ?? '' ),
 				'logo'          => AFR_Contentful::field( $entry, 'logo' ),
 			];

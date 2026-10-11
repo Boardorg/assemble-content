@@ -15,6 +15,13 @@ class AFR_CPT {
 	public const POST_TYPE = 'field_report';
 	public const TAXONOMY  = 'field_report_community';
 
+	/**
+	 * Member Center group slugs (a community's `memberCenterGroups`), as hidden
+	 * terms. A site that runs on BuddyPress groups (the Member Center) selects
+	 * reports for a group, or a Network's Boards, with one indexed tax_query.
+	 */
+	public const GROUP_TAXONOMY = 'field_report_mc_group';
+
 	/** Meta keys. Underscore-prefixed keys stay hidden from the meta box UI. */
 	public const META_ENTRY_ID   = '_afr_entry_id';
 	public const META_REVISION   = '_afr_revision';
@@ -34,6 +41,14 @@ class AFR_CPT {
 	 */
 	public const META_FEATURED      = '_afr_featured';
 	public const META_FEATURED_RANK = '_afr_featured_rank';
+
+	/**
+	 * One row per value, so `meta_query` can match a single slug or key:
+	 * topic slugs (the Member Center content-topic vocabulary) and the practice
+	 * areas of the report's communities.
+	 */
+	public const META_TOPICS         = '_afr_topic';
+	public const META_PRACTICE_AREAS = '_afr_practice_area';
 
 	public static function init(): void {
 		// Taxonomy first, deliberately. Rewrite rules are matched in registration
@@ -63,6 +78,24 @@ class AFR_CPT {
 				'show_admin_column' => false,
 				'show_in_rest'      => false,
 				'rewrite'           => [ 'slug' => 'field-reports/community', 'with_front' => false ],
+			]
+		);
+
+		register_taxonomy(
+			self::GROUP_TAXONOMY,
+			[ self::POST_TYPE ],
+			[
+				'labels'            => [
+					'name'          => 'Member Center groups',
+					'singular_name' => 'Member Center group',
+				],
+				'public'            => false,
+				'hierarchical'      => false,
+				'show_ui'           => false,
+				'show_admin_column' => false,
+				'show_in_rest'      => false,
+				'query_var'         => false,
+				'rewrite'           => false,
 			]
 		);
 	}

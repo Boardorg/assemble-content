@@ -107,7 +107,7 @@ class AFR_Query {
 				'numberposts' => $limit,
 				'orderby'     => 'date',
 				'order'       => 'DESC',
-				'tax_query'   => [ // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.tax_query_tax_query -- one indexed term lookup.
+				'tax_query'   => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query -- one indexed term lookup.
 					[
 						'taxonomy' => AFR_CPT::TAXONOMY,
 						'field'    => 'slug',
@@ -116,6 +116,64 @@ class AFR_Query {
 				],
 			]
 		);
+	}
+
+	/**
+	 * Newest reports for any of these Member Center groups. A Network passes its
+	 * Practice Boards (its `practice_areas` group meta), so every report from
+	 * those Boards rolls up to it. Like the rest of this class, this lists; it
+	 * never decides who may read a body.
+	 *
+	 * @param string[] $groups Member Center group slugs, e.g. [ 'learning-development', 'talent' ].
+	 * @param array    $args   Extra get_posts() args (paged, offset, date_query…).
+	 * @return WP_Post[]
+	 */
+	public static function for_groups( array $groups, int $limit = 10, array $args = [] ): array {
+		$groups = array_values( array_filter( array_map( 'sanitize_title', $groups ) ) );
+		if ( ! $groups ) {
+			return [];
+		}
+
+		return get_posts(
+			array_merge(
+				[
+					'post_type'   => AFR_CPT::POST_TYPE,
+					'post_status' => 'publish',
+					'numberposts' => $limit,
+					'orderby'     => 'date',
+					'order'       => 'DESC',
+				],
+				$args,
+				[
+					'tax_query' => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query -- one indexed term lookup.
+						[
+							'taxonomy' => AFR_CPT::GROUP_TAXONOMY,
+							'field'    => 'slug',
+							'terms'    => $groups,
+						],
+					],
+				]
+			)
+		);
+	}
+
+	/**
+	 * A report's Member Center group slugs.
+	 *
+	 * @return string[]
+	 */
+	public static function groups( int $post_id ): array {
+		$terms = wp_get_object_terms( $post_id, AFR_CPT::GROUP_TAXONOMY, [ 'fields' => 'slugs' ] );
+		return is_wp_error( $terms ) ? [] : $terms;
+	}
+
+	/**
+	 * A report's topic slugs, read from meta (no JSON decode).
+	 *
+	 * @return string[]
+	 */
+	public static function topic_slugs( int $post_id ): array {
+		return array_values( (array) get_post_meta( $post_id, AFR_CPT::META_TOPICS, false ) );
 	}
 
 	/** Is this report flagged in Contentful? */
