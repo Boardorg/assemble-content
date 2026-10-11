@@ -2,7 +2,7 @@
 
 The Assemble Content feed: a WordPress plugin that copies published Contentful entries into hidden, read-only post types. Contentful is the only source of truth; the WordPress copy is a cache that `wp assemble-content sync --all --force` can rebuild at any time.
 
-Field Reports are the first content type. Others (playbooks next) are added as entries in the content-type registry, `AFR_Types` (`includes/class-afr-types.php`), or through the `afr_content_types` filter: post type, URL slug, field mapping, link depth, dependencies and whether it is gated. Fetching, syncing, webhook routing, orphan drafting and the CLI all read that one list.
+Field Reports and playbooks (1.8.0) are the content types today. Others are added as entries in the content-type registry, `AFR_Types` (`includes/class-afr-types.php`), or through the `afr_content_types` filter: post type, URL slug, field mapping, link depth, dependencies and whether it is gated. Fetching, syncing, webhook routing, orphan drafting and the CLI all read that one list.
 
 Synced post types are hidden from wp-admin (`show_ui => false`) and never exposed over REST. The only admin screen is **Settings → Assemble Content**. The plugin is site-agnostic: the public site (theassemble.com) uses it now, and the Member Center installs a tagged release.
 
@@ -13,6 +13,12 @@ Each request is rendered for one audience view (standard, council, delegate, pub
 Without a theme that does this, the plugin renders its own `.afr-doc` document through `the_content`, formatted from the same sections.
 
 **Full text for Public reports (1.7.0, opt-in).** A site that runs a free-read meter can return true from `afr_public_full_text` (`( bool $full, int $post_id )`, default false). The public view of a report ticked Public then also carries its body sections (never engagement), and the view model's `full_text` is true; the site decides what to show. It has no effect on any other view, so members-only reports are never affected, and the plugin's own HTML render is unchanged. The public site turns it on (`assemble-core`); the Member Center needn't.
+
+## Playbooks (1.8.0)
+
+Contentful's `playbook` type becomes the `playbook` post type at `/playbooks/<slug>/`, gated like Field Reports (`availableTo`, `showOn`). The map is `AFR_Playbook_Type`; the gate is `AFR_Playbook::view_model( $post_id )`, which reuses `AFR_Audience::view_for()` and its own sections table: identity (title, community, topics, dek, edition, image, people) for every view; `toc`, `chapters`, `community` and `author` for members; the first chapter (`intro`) and `join` for the public view; `gate` for denied. Council and delegate audiences get the standard view. `afr_public_full_text` covers playbooks the same way.
+
+The body is one Rich Text field. Each Heading 2 starts a chapter with a stable anchor (`id`, de-duplicated); a Heading 2 with a colon ("Days 0–30: Diagnose and Orient") is a numbered phase (`kind`, `kicker`, `rest`, `number`). A chapter's blocks are its lead paragraph, Rich Text HTML, subsections (an all-italic paragraph after a Heading 3 is its `subtitle`), and `callout` blocks from embedded `playbookCallout` entries (kinds `stat`, `checklist`, `checkpoint`, `note`, `table`, `layers`), which the site maps onto its own markup. `the_content` on a playbook is always the teaser, so the stored body is never served; the site renders the single page from the view model.
 
 ## Which reports a site shows: the site channel
 
@@ -79,7 +85,11 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/test
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/groups-topics-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/channel-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/public-full-text-test.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/playbook-test.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/type-isolation-test.php
 ```
+
+`playbook-test.php` uses a synthetic entry: the registry entry and post type (no REST, no admin UI), the map, chapters, anchors, subtitles and callouts, every view's exact sections with members-only text absent from public and denied (and present in standard), real visitors (anonymous, anonymous `?afr_as=`, a stubbed Board Member, a Public playbook with and without full text), and `the_content` serving only the teaser. `type-isolation-test.php` serves the site's own synced entries back through a fake Delivery API and shows that a playbook sync never drafts a Field Report and a Field Report sync never drafts a playbook: per-type full syncs, a full sync with the other type offline, and the webhook path. Note that `channel-test.php` runs real syncs, so a local playbook that isn't published in Contentful gets drafted by it.
 
 `channel-test.php` runs real syncs with the channel forced, covering: set, unset (nothing drafted), an unticked entry through the webhook path (drafted), and a channel with no reports (everything drafted). It restores the reports afterwards. `groups-topics-test.php` checks the group terms, topic and practice-area meta against each entry, `for_groups()`, `afr_topic_taxonomy` (existing terms only) and `afr_synced`.
 
