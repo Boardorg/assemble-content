@@ -61,6 +61,9 @@ const url = (id, name, extra = {}) => ({
 
 const AUDIENCES = ['Public', 'Board Member', 'Board Chair', 'Network Member', 'Council Chair']
 
+// Sites a report may appear on. Each site's plugin syncs only the reports ticked for it.
+const CHANNELS = ['Member Center', 'Public website']
+
 // Practice-area keys shared with the Member Center (Network practice_area) and the website (data-area).
 const PRACTICE_AREAS = ['human-resources', 'marketing', 'manufacturing', 'technology', 'finance']
 
@@ -112,22 +115,39 @@ const contentTypes = [
     ],
   },
   {
-    id: 'topic',
+    id: 'topicCategory',
     data: {
-      name: 'Topic',
-      description: 'Closed topic vocabulary, mirrored from the Member Center content-topic taxonomy (boardmc-topics vocabulary.php). Topics answer “what is this about”; communities answer “who is it for”.',
+      name: 'Topic Category',
+      description: 'A row of a Board’s Terrain Map (the Assemble Content Tag Taxonomy workbook). Each belongs to one community and groups that community’s topics.',
       displayField: 'name',
       fields: [
         symbol('name', 'Name', { required: true }),
         symbol('slug', 'Slug', { required: true, validations: [{ unique: true }, { regexp: { pattern: '^[a-z0-9-]+$' } }] }),
-        symbol('cluster', 'Cluster'),
-        entryLinks('communities', 'Communities', ['community']),
+        entryLink('community', 'Community', ['community'], { required: true }),
+        integer('position', 'Position', { validations: [{ range: { min: 1, max: 99 } }] }),
+      ],
+    },
+    controls: [
+      { fieldId: 'slug', widgetId: 'singleLine', settings: { helpText: 'Community short name plus the category, e.g. ldb-l-and-d-strategy. Permanent once used.' } },
+      { fieldId: 'position', widgetId: 'numberEditor', settings: { helpText: 'Order of this row in the Board’s Terrain Map, 1 first.' } },
+    ],
+  },
+  {
+    id: 'topic',
+    data: {
+      name: 'Topic',
+      description: 'Closed topic vocabulary from the Assemble Content Tag Taxonomy workbook, the same list the Member Center content-topic taxonomy uses. Topics answer “what is this about”; communities answer “who is it for”.',
+      displayField: 'name',
+      fields: [
+        symbol('name', 'Name', { required: true }),
+        symbol('slug', 'Slug', { required: true, validations: [{ unique: true }, { regexp: { pattern: '^[a-z0-9-]+$' } }] }),
+        longText('description', 'What it covers'),
+        entryLinks('categories', 'Categories', ['topicCategory'], { validations: [{ size: { min: 1 } }] }),
       ],
     },
     controls: [
       { fieldId: 'slug', widgetId: 'singleLine', settings: { helpText: 'Must match the Member Center content-topic slug exactly. Slugs are permanent: never rename one that content uses. Retire it and add a new topic instead.' } },
-      { fieldId: 'cluster', widgetId: 'singleLine', settings: { helpText: 'Display grouping only (the Member Center topic_cluster), never a hierarchy.' } },
-      { fieldId: 'communities', widgetId: 'entryLinksEditor', settings: { helpText: 'The communities this topic is offered in (the Member Center topic_areas). A shared topic lists several communities; it is never duplicated per community.' } },
+      { fieldId: 'categories', widgetId: 'entryLinksEditor', settings: { helpText: 'The Terrain Map row(s) this topic sits in. A topic shared by several Boards has one category per Board; it is never duplicated.' } },
     ],
   },
   {
@@ -171,6 +191,10 @@ const contentTypes = [
         },
         // Promotion. Drives the homepage stream and the Peer Intelligence
         // carousel on the website; nothing else reads these.
+        {
+          ...base, id: 'showOn', name: 'Show on', type: 'Array',
+          items: { type: 'Symbol', validations: [{ in: CHANNELS }] },
+        },
         boolean('featured', 'Featured'),
         integer('featuredRank', 'Featured rank', { validations: [{ range: { min: 1, max: 99 } }] }),
         // Standard report
@@ -198,6 +222,7 @@ const contentTypes = [
     controls: [
       { fieldId: 'slug', widgetId: 'slugEditor', settings: { trackingFieldId: 'headline' } },
       { fieldId: 'sourceLine', widgetId: 'singleLine', settings: { helpText: 'Final formatted source line, e.g. “From the March 2026 AEO Board discussion.”' } },
+      { fieldId: 'showOn', widgetId: 'checkbox', settings: { helpText: 'Where this report appears once published. A site only shows reports ticked for it; untick to take a report off that site. Who can read it there is still set by Available to.' } },
       { fieldId: 'topics', widgetId: 'entryLinksEditor', settings: { helpText: 'One to four topics, chosen from the topics offered in this report’s communities. Practice area is not set here: it comes from the communities.' } },
       { fieldId: 'availableTo', widgetId: 'checkbox', settings: { helpText: 'Public: headline + Picking Up the Story only. Other audiences: complete report. Council Chair: complete report plus the derived Key Takeaways at a Glance view.' } },
       { fieldId: 'featured', widgetId: 'boolean', settings: { helpText: 'Promote this report to the front of the homepage stream and the Peer Intelligence carousel. Gating is unaffected — a featured report that a visitor cannot open still shows only its card.' } },
@@ -214,7 +239,7 @@ const contentTypes = [
       { fieldId: 'socialCopyOverride', widgetId: 'multipleLine', settings: { helpText: 'Leave blank to use Picking Up the Story as the source for social copy. Enter custom copy only when the report needs a more tailored social treatment.' } },
     ],
     tabs: [
-      { groupId: 'basics', name: 'Basics', fields: ['internalTitle', 'headline', 'slug', 'sourceLine', 'primaryCommunity', 'additionalCommunities', 'topics', 'author', 'featuredImage', 'availableTo', 'featured', 'featuredRank'] },
+      { groupId: 'basics', name: 'Basics', fields: ['internalTitle', 'headline', 'slug', 'sourceLine', 'primaryCommunity', 'additionalCommunities', 'topics', 'author', 'featuredImage', 'showOn', 'availableTo', 'featured', 'featuredRank'] },
       { groupId: 'standardReport', name: 'Standard Report', fields: ['mdTakes', 'pickingUpSubhead', 'pickingUpBody', 'charts', 'pullquote', 'focusSubhead', 'focusBody', 'takeawaysStandard'] },
       { groupId: 'newsletterVersion', name: 'Newsletter Version', fields: ['newsletterSetup', 'newsletterFocus', 'newsletterImage', 'takeawaysNewsletter', 'recordingUrl'] },
       { groupId: 'variations', name: 'Variations', fields: ['takeawaysShort', 'socialCopyOverride'] },

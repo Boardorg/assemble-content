@@ -45,7 +45,18 @@ class AFR_Settings {
 			'delivery_token' => self::resolve( 'AFR_DELIVERY_TOKEN', $stored, 'delivery_token' ),
 			'preview_token'  => self::resolve( 'AFR_PREVIEW_TOKEN', $stored, 'preview_token' ),
 			'webhook_secret' => self::resolve( 'AFR_WEBHOOK_SECRET', $stored, 'webhook_secret' ),
+			'site_channel'   => self::site_channel(),
 		];
+	}
+
+	/**
+	 * Which Contentful "Show on" channel this site is: 'Public website' or 'Member Center'.
+	 * A site only syncs reports ticked for its channel; with none set it syncs none.
+	 */
+	public static function site_channel(): string {
+		$stored = get_option( self::OPTION, [] );
+
+		return trim( (string) apply_filters( 'afr_site_channel', self::resolve( 'AFR_SITE_CHANNEL', is_array( $stored ) ? $stored : [], 'site_channel' ) ) );
 	}
 
 	private static function resolve( string $constant, array $stored, string $key ): string {
@@ -130,6 +141,11 @@ class AFR_Settings {
 
 		$clean['audience_roles'] = $existing['audience_roles'] ?? self::DEFAULT_AUDIENCE_ROLES;
 
+		// Set by constant or WP-CLI, not the form; saving the form keeps it.
+		if ( isset( $existing['site_channel'] ) ) {
+			$clean['site_channel'] = (string) $existing['site_channel'];
+		}
+
 		return $clean;
 	}
 
@@ -152,6 +168,7 @@ class AFR_Settings {
 			<table class="widefat striped" style="max-width:820px">
 				<tbody>
 				<tr><th style="width:220px">Configured</th><td><?php echo self::is_configured() ? '&#10003; yes' : '&#10007; missing space ID or delivery token'; ?></td></tr>
+				<tr><th>Site channel</th><td><?php echo $s['site_channel'] !== '' ? '<code>' . esc_html( $s['site_channel'] ) . '</code> &mdash; only reports ticked for it in &ldquo;Show on&rdquo; sync here' : '&#10007; not set: no reports sync. Set <code>AFR_SITE_CHANNEL</code> or <code>afr_settings[site_channel]</code>.'; ?></td></tr>
 				<tr><th>Space / environment</th><td><code><?php echo esc_html( $s['space_id'] ?: '—' ); ?></code> / <code><?php echo esc_html( $s['environment'] ); ?></code></td></tr>
 				<?php foreach ( AFR_Types::all() as $content_type => $type ) : ?>
 					<?php $counts = wp_count_posts( $type['post_type'] ); ?>

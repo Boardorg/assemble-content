@@ -104,7 +104,17 @@ class AFR_Contentful {
 			return [ 'items' => [], 'error' => sprintf( 'Content type %s is not registered.', $content_type ), 'total' => 0, 'complete' => false, 'pages' => 0 ];
 		}
 
-		return self::get_all( $content_type, (int) $type['include'], (int) $type['page_size'], (string) $type['order'] );
+		$extra = [];
+		if ( $type['channel_field'] !== '' ) {
+			$channel = AFR_Settings::site_channel();
+			if ( $channel === '' ) {
+				// Incomplete on purpose: nothing syncs and nothing is drafted until the site says what it is.
+				return [ 'items' => [], 'error' => 'site channel not set (AFR_SITE_CHANNEL or afr_settings[site_channel]); nothing synced.', 'total' => 0, 'complete' => false, 'pages' => 0 ];
+			}
+			$extra[ 'fields.' . $type['channel_field'] . '[in]' ] = $channel;
+		}
+
+		return self::get_all( $content_type, (int) $type['include'], (int) $type['page_size'], (string) $type['order'], $extra );
 	}
 
 	/**

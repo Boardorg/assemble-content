@@ -208,6 +208,7 @@ class AFR_CLI {
 		WP_CLI::log( 'Contentful' );
 		WP_CLI::log( '  space:        ' . ( $settings['space_id'] ?: '(not set)' ) );
 		WP_CLI::log( '  environment:  ' . $settings['environment'] );
+		WP_CLI::log( '  site channel: ' . ( $settings['site_channel'] !== '' ? $settings['site_channel'] : '(not set — no reports sync)' ) );
 		WP_CLI::log( '  CDA token:    ' . ( $settings['delivery_token'] ? 'set' : '(not set)' ) );
 		WP_CLI::log( '  webhook:      ' . ( $settings['webhook_secret'] ? 'secret set' : 'DISABLED (no secret)' ) );
 		WP_CLI::log( '  webhook URL:  ' . AFR_REST::webhook_url() );

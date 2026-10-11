@@ -128,6 +128,28 @@ class AFR_Sync {
 			return $result;
 		}
 
+		$type = AFR_Types::get( (string) ( $entry['sys']['contentType']['sys']['id'] ?? '' ) );
+		if ( $type && $type['channel_field'] !== '' && ! self::on_channel( $entry, $type['channel_field'] ) ) {
+			$channel = AFR_Settings::site_channel();
+			$post_id = self::find_post_by_entry_id( $entry_id );
+
+			if ( $channel === '' ) {
+				$result['errors']     = 1;
+				$result['messages'][] = sprintf( 'skipped %s: site channel not set', $entry_id );
+			} elseif ( $post_id && get_post_status( $post_id ) === 'publish' ) {
+				self::draft_post( $post_id, 'not ticked for ' . $channel . ' in Contentful' );
+				$result['drafted']    = 1;
+				$result['messages'][] = sprintf( 'drafted #%d (%s not shown on %s)', $post_id, $entry_id, $channel );
+			} else {
+				$result['unchanged']  = 1;
+				$result['messages'][] = sprintf( 'skipped %s: not shown on %s', $entry_id, $channel );
+			}
+
+			self::record( $result, $trigger );
+
+			return $result;
+		}
+
 		$outcome                      = self::sync_entry( $entry, $force );
 		$result[ $outcome['status'] ] = 1;
 		$result['messages'][]         = $outcome['message'];
@@ -135,6 +157,13 @@ class AFR_Sync {
 		self::record( $result, $trigger );
 
 		return $result;
+	}
+
+	/** Is this entry ticked for the site's channel? False when no channel is set. */
+	public static function on_channel( array $entry, string $field ): bool {
+		$channel = AFR_Settings::site_channel();
+
+		return $channel !== '' && in_array( $channel, (array) AFR_Contentful::field( $entry, $field, [] ), true );
 	}
 
 	/**

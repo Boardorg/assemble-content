@@ -45,7 +45,9 @@ class AFR_Types {
 				'include'      => 3,
 				'page_size'    => 100,
 				'gated'        => true,
-				'dependencies' => [ 'mdTake', 'person', 'community' ],
+				'dependencies' => [ 'mdTake', 'person', 'community', 'topic', 'topicCategory' ],
+				// Contentful "Show on": only entries ticked for this site's channel sync.
+				'channel_field' => 'showOn',
 				'map'          => [ AFR_Field_Report_Type::class, 'map' ],
 				'after_save'   => [ AFR_Field_Report_Type::class, 'after_save' ],
 				// The July theme reads has_post_thumbnail() for its placeholder image.
@@ -78,6 +80,7 @@ class AFR_Types {
 					'order'          => 'sys.id',
 					'gated'          => false,
 					'dependencies'   => [],
+					'channel_field'  => '',
 					'map'            => null,
 					'after_save'     => null,
 					'register'       => true,
