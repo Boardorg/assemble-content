@@ -59,7 +59,7 @@ const url = (id, name, extra = {}) => ({
   ...extra,
 })
 
-const AUDIENCES = ['Public', 'Board Member', 'Board Chair', 'Delegate', 'Network Member', 'Council Chair']
+const AUDIENCES = ['Public', 'Board Member', 'Board Chair', 'Network Member', 'Council Chair']
 
 // Practice-area keys shared with the Member Center (Network practice_area) and the website (data-area).
 const PRACTICE_AREAS = ['human-resources', 'marketing', 'manufacturing', 'technology', 'finance']
