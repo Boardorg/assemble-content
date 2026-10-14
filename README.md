@@ -16,19 +16,57 @@ Without a theme that does this, the plugin renders its own `.afr-doc` document t
 
 ## Playbooks (1.8.0)
 
-Contentful's `playbook` type becomes the `playbook` post type at `/playbooks/<slug>/`, gated like Field Reports (`availableTo`, `showOn`). The map is `AFR_Playbook_Type`; the gate is `AFR_Playbook::view_model( $post_id )`, which reuses `AFR_Audience::view_for()` and its own sections table: identity (title, community, topics, dek, edition, image, people) for every view; `toc`, `chapters`, `community` and `author` for members; the first chapter (`intro`) and `join` for the public view; `gate` for denied. Council and delegate audiences get the standard view. `afr_public_full_text` covers playbooks the same way.
+Contentful's `playbook` type becomes the `playbook` post type at `/playbooks/<slug>/`, gated and placed like Field Reports (`availableTo`, `publishTo`). The map is `AFR_Playbook_Type`; the gate is `AFR_Playbook::view_model( $post_id )`, which reuses `AFR_Audience::view_for()` and its own sections table: identity (title, community, topics, dek, edition, image, people) for every view; `toc`, `chapters`, `community` and `author` for members; the first chapter (`intro`) and `join` for the public view; `gate` for denied. Council and delegate audiences get the standard view. `afr_public_full_text` covers playbooks the same way.
 
 The body is one Rich Text field. Each Heading 2 starts a chapter with a stable anchor (`id`, de-duplicated); a Heading 2 with a colon ("Days 0–30: Diagnose and Orient") is a numbered phase (`kind`, `kicker`, `rest`, `number`). A chapter's blocks are its lead paragraph, Rich Text HTML, subsections (an all-italic paragraph after a Heading 3 is its `subtitle`), and `callout` blocks from embedded `playbookCallout` entries (kinds `stat`, `checklist`, `checkpoint`, `note`, `table`, `layers`), which the site maps onto its own markup. `the_content` on a playbook is always the teaser, so the stored body is never served; the site renders the single page from the view model.
 
-## Which reports a site shows: the site channel
+## Where a piece appears: Publish to (1.9.0)
 
-Each Field Report has a **Show on** field in Contentful, with checkboxes for `Member Center` and `Public website`. Each site declares its channel, and only reports ticked for it sync there. The channel comes from the `AFR_SITE_CHANNEL` constant (use this on VIP) or `afr_settings[site_channel]`; the `afr_site_channel` filter can override either.
+Field Reports and playbooks have three editor-facing checkbox fields:
 
-- **Ticked:** the report syncs like any other.
-- **Unticked:** the post is drafted on that site, by the next full sync or straight away by the webhook. Unticking is how a report is taken off one site without unpublishing it everywhere.
-- **No channel set:** the site syncs no reports and drafts nothing. `status` and the settings screen say so. A misconfigured site shows nothing; it never shows everything.
+- **Publish to:** where the piece appears. `Assemble Site`, then each Network, Board and Council by name. The list lives in `contentful/places.mjs`.
+- **Functional areas:** the Boards the piece is about, by Community entry name. The Community entry still supplies the name, logo, boilerplate and practice area.
+- **Who can read it** (`availableTo`): unchanged, plus `Council Member`.
 
-Who can read a report on a site is still decided by `availableTo`.
+Each site declares a channel, and only pieces placed on it sync there (`AFR_Placement::on_site()`):
+
+| Channel | Syncs |
+|---|---|
+| `Public website` or `Assemble Site` | pieces with Assemble Site ticked |
+| `Member Center` | pieces with any other place ticked |
+| anything else | pieces with that exact place ticked |
+
+- **Setting the channel:** the `AFR_SITE_CHANNEL` constant (use this on VIP) or `afr_settings[site_channel]`. The `afr_site_channel` filter can override either, and `afr_on_site` can override the result per entry.
+- **Unticking:** a piece no longer placed on a site is drafted there, with the reason "not published to this site". That happens on the next full sync, or straight away through the webhook.
+- **No channel set:** the site syncs nothing and drafts nothing.
+
+**Places are stored** as terms in a hidden `afr_place` taxonomy on every placed type. `AFR_Query::for_places( [ 'HR Network' ] )` lists pieces for a place, and `AFR_Query::places( $post_id )` reads them back. Placement only lists. Who may read a body is still `availableTo` and `afr_current_audiences`.
+
+**Functional areas are resolved by name** from the cached community directory. `AFR_Placement::normalize()` copies them into the Community link fields the renderers read: the first Board fills the kicker slot. The view model also carries `functional_areas`, with every Board in order, and `places`. A site that knows where the reader is chooses the colour and kicker from that list; with no context, it uses the first. The plugin's own accent colour follows the first Board's practice area.
+
+**Before Contentful is migrated,** entries without Publish to or Functional areas are read the old way, and sync exactly as before:
+- "Public website" in Show on becomes Assemble Site.
+- "Member Center" in Show on becomes each linked community's name.
+- The Community links are the functional areas.
+
+`contentful/migrate-places.mjs` fills the new fields on existing entries. It runs as a dry run unless passed `--apply`, and never fills a Network.
+
+**Sync warnings:** an entry with no place, or a functional area with no Community entry, still syncs, but the sync log carries a warning. Sites add their own checks through `afr_placement_warnings`.
+
+## Dates (1.9.0)
+
+A piece is filed under:
+1. its **Publication date** (`publishDate`), if set
+2. otherwise, the discussion date in its source line
+3. otherwise, its first publish time
+
+A date with no time means local midnight. Timestamps are converted properly, so `post_date_gmt` is always right. A future date is clamped to now: Contentful's scheduling decides when a piece goes live, never WordPress.
+
+## Fetch failures and the webhook (1.9.0)
+
+- **A failed fetch leaves the post alone.** A single-entry fetch that fails (timeout, 401, 429, 5xx, a malformed response) no longer drafts the post. The sync reports an error and the webhook answers 500, so Contentful retries. Only a successful response with no entry means unpublished. `AFR_Contentful::get_entry_result()` tells the two apart.
+- **De-duplication is per delivery.** The webhook skips a delivery only when it has already handled that exact topic, entry and revision successfully, so a publish quickly followed by an unpublish is never dropped.
+- **One sync per entry at a time.** Concurrent deliveries for the same entry are serialized with an object-cache lock. A busy entry answers 503, which Contentful retries.
 
 ## Topics, practice areas and Member Center groups
 
@@ -36,7 +74,7 @@ Each synced report carries its classification in queryable form, not only inside
 
 - **Topics:** `_afr_topic` meta, one row per topic slug. The slugs are the Member Center `content-topic` vocabulary, mirrored in Contentful's `topic` type. A site with its own topic taxonomy returns its name from the `afr_topic_taxonomy` filter (the Member Center returns `'content-topic'`). Each sync then sets that taxonomy's **existing** terms on the report and never creates a term. The site registers the taxonomy for `field_report` itself.
 - **Practice areas:** `_afr_practice_area` meta, one row per area of the report's communities (`human-resources`, `marketing`, `manufacturing`, `technology`, `finance`).
-- **Member Center groups:** a hidden `field_report_mc_group` taxonomy whose terms are the communities' `memberCenterGroups` slugs. `AFR_Query::for_groups( [ 'learning-development', 'talent', … ] )` lists reports for any of those groups. A Network passes its Practice Boards (its `practice_areas` group meta), so every report from those Boards rolls up to it. Like every `AFR_Query` helper, this only lists reports: who may read a body is still decided by `availableTo` and `afr_current_audiences`.
+- **Member Center groups:** a hidden `field_report_mc_group` taxonomy whose terms are the functional areas' `memberCenterGroups` slugs. `AFR_Query::for_groups()` lists reports about those Boards. To list what a Network or Board should *show*, use places (`for_places()`): publishing to a Network is explicit, never inherited from its Boards.
 - **Other hooks:** `AFR_Query::topic_slugs()` and `AFR_Query::groups()` read them back. `AFR_Communities::all()` includes each community's `groups`. The `afr_synced( $post_id, $entry, $content_type )` action fires after every written entry, for site-side mappings such as search indexing.
 
 Run `wp assemble-content sync --all --force` once after upgrading so existing posts get the new terms and meta.
@@ -84,6 +122,7 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/test
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/preview-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/groups-topics-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/channel-test.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/placement-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/public-full-text-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/playbook-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/type-isolation-test.php
