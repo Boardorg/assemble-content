@@ -17,12 +17,10 @@ export const NETWORKS = [
 
 export const BOARDS = [
   'AEO Board',
-  'Community Board',
   'Culture & Experience Board',
   'Data & AI Strategy Board',
   'Data Privacy Board',
   'DEI Board',
-  'Ecommerce Board',
   'ESG & CSR Board',
   'Learning & Development Board',
   'Manufacturing Board',
