@@ -92,6 +92,20 @@ class AFR_Audience {
 
 	/** Which view the current visitor gets for this report. */
 	public static function view_for( int $post_id ): string {
+		$view = self::resolve_view( $post_id );
+
+		/**
+		 * Filter the view a visitor gets, for a site whose own rules decide access
+		 * (the Member Center: placement plus levels, with no teasers).
+		 *
+		 * @param string $view    standard, council, delegate, public or denied.
+		 * @param int    $post_id The piece.
+		 */
+		return (string) apply_filters( 'afr_view', $view, $post_id );
+	}
+
+	/** The view from availableTo and the visitor's audiences alone. */
+	private static function resolve_view( int $post_id ): string {
 		$allowed = self::report_audiences( $post_id );
 		$mine    = self::current_audiences();
 		$shared  = array_intersect( $allowed, $mine );

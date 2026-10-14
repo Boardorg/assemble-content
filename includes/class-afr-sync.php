@@ -41,12 +41,9 @@ class AFR_Sync {
 			$types = [ $only_type => $types[ $only_type ] ];
 		}
 
-		foreach ( $types as $content_type => $type ) {
-			self::sync_type( (string) $content_type, $type, $force, $result );
-		}
-
 		// The community directory and Site Features ride along with a full sync so `wp assemble-content sync --all`
-		// rebuilds the entire website surface, not just the post types.
+		// rebuilds the entire website surface, not just the post types. Communities go first:
+		// functional areas are resolved from that directory.
 		if ( $only_type === '' ) {
 			$communities = AFR_Communities::sync();
 			if ( $communities['error'] !== '' ) {
@@ -55,7 +52,13 @@ class AFR_Sync {
 			} else {
 				$result['messages'][] = sprintf( 'communities: %d cached', $communities['count'] );
 			}
+		}
 
+		foreach ( $types as $content_type => $type ) {
+			self::sync_type( (string) $content_type, $type, $force, $result );
+		}
+
+		if ( $only_type === '' ) {
 			$features = AFR_Features::sync();
 			if ( $features['error'] !== '' ) {
 				$result['errors']++;
@@ -74,8 +77,17 @@ class AFR_Sync {
 	private static function sync_type( string $content_type, array $type, bool $force, array &$result ): void {
 		$fetch = AFR_Contentful::get_type( $content_type );
 
-		$seen = [];
+		$seen     = [];
+		$off_site = [];
 		foreach ( $fetch['items'] as $entry ) {
+			$entry = AFR_Placement::normalize( $entry );
+
+			// Not placed on this site: left out of $seen, so its post is drafted below.
+			if ( $type['placed'] && ! AFR_Placement::on_site( $entry ) ) {
+				$off_site[] = (string) ( $entry['sys']['id'] ?? '' );
+				continue;
+			}
+
 			$outcome = self::sync_entry( $entry, $force );
 			$result[ $outcome['status'] ] = ( $result[ $outcome['status'] ] ?? 0 ) + 1;
 			$result['messages'][]         = $outcome['message'];
@@ -99,16 +111,29 @@ class AFR_Sync {
 
 		// Anything in WP that Contentful no longer publishes gets drafted, not deleted.
 		foreach ( self::orphans( (string) $type['post_type'], $seen ) as $post_id ) {
-			self::draft_post( (int) $post_id, 'no longer published in Contentful' );
+			$entry_id = (string) get_post_meta( (int) $post_id, AFR_CPT::META_ENTRY_ID, true );
+			$reason   = in_array( $entry_id, $off_site, true ) ? 'not published to this site' : 'no longer published in Contentful';
+
+			self::draft_post( (int) $post_id, $reason );
 			$result['drafted']++;
-			$result['messages'][] = sprintf( 'drafted #%d (no longer published in Contentful)', $post_id );
+			$result['messages'][] = sprintf( 'drafted #%d (%s)', $post_id, $reason );
 		}
 	}
 
 	/** Sync a single entry by Contentful ID. */
 	public static function sync_one( string $entry_id, bool $force = false, string $trigger = 'manual' ): array {
 		$result = self::blank_result();
-		$entry  = AFR_Contentful::get_entry( $entry_id );
+		$fetch  = AFR_Contentful::get_entry_result( $entry_id );
+		$entry  = $fetch['entry'];
+
+		// A failed request says nothing about the entry: keep the post as it is.
+		if ( $fetch['error'] !== '' ) {
+			$result['errors']     = 1;
+			$result['messages'][] = sprintf( 'could not fetch %s, post left unchanged: %s', $entry_id, $fetch['error'] );
+			self::record( $result, $trigger );
+
+			return $result;
+		}
 
 		if ( ! $entry ) {
 			// Absent from the CDA means unpublished or deleted.
@@ -128,8 +153,9 @@ class AFR_Sync {
 			return $result;
 		}
 
-		$type = AFR_Types::get( (string) ( $entry['sys']['contentType']['sys']['id'] ?? '' ) );
-		if ( $type && $type['channel_field'] !== '' && ! self::on_channel( $entry, $type['channel_field'] ) ) {
+		$entry = AFR_Placement::normalize( $entry );
+		$type  = AFR_Types::get( (string) ( $entry['sys']['contentType']['sys']['id'] ?? '' ) );
+		if ( $type && $type['placed'] && ! AFR_Placement::on_site( $entry ) ) {
 			$channel = AFR_Settings::site_channel();
 			$post_id = self::find_post_by_entry_id( $entry_id );
 
@@ -137,12 +163,12 @@ class AFR_Sync {
 				$result['errors']     = 1;
 				$result['messages'][] = sprintf( 'skipped %s: site channel not set', $entry_id );
 			} elseif ( $post_id && get_post_status( $post_id ) === 'publish' ) {
-				self::draft_post( $post_id, 'not ticked for ' . $channel . ' in Contentful' );
+				self::draft_post( $post_id, 'not published to this site' );
 				$result['drafted']    = 1;
-				$result['messages'][] = sprintf( 'drafted #%d (%s not shown on %s)', $post_id, $entry_id, $channel );
+				$result['messages'][] = sprintf( 'drafted #%d (%s not published to %s)', $post_id, $entry_id, $channel );
 			} else {
 				$result['unchanged']  = 1;
-				$result['messages'][] = sprintf( 'skipped %s: not shown on %s', $entry_id, $channel );
+				$result['messages'][] = sprintf( 'skipped %s: not published to %s', $entry_id, $channel );
 			}
 
 			self::record( $result, $trigger );
@@ -159,11 +185,9 @@ class AFR_Sync {
 		return $result;
 	}
 
-	/** Is this entry ticked for the site's channel? False when no channel is set. */
-	public static function on_channel( array $entry, string $field ): bool {
-		$channel = AFR_Settings::site_channel();
-
-		return $channel !== '' && in_array( $channel, (array) AFR_Contentful::field( $entry, $field, [] ), true );
+	/** @deprecated 1.9.0 Use AFR_Placement::on_site(). */
+	public static function on_channel( array $entry, string $field = '' ): bool {
+		return AFR_Placement::on_site( AFR_Placement::normalize( $entry ) );
 	}
 
 	/**
@@ -216,7 +240,9 @@ class AFR_Sync {
 			}
 		}
 
+		// A type that dates its own posts keeps that date.
 		$postarr = array_merge(
+			isset( $fields['post_date'] ) ? [] : AFR_Post_Date::for_entry( $entry ),
 			$fields,
 			[
 				'post_type'   => $type['post_type'],
@@ -259,15 +285,22 @@ class AFR_Sync {
 			call_user_func( $type['after_save'], $post_id, $entry );
 		}
 
+		if ( $type['placed'] ) {
+			AFR_Placement::apply( $post_id, $entry );
+		}
+
 		/**
 		 * After an entry is written to its post: a site's seam for its own
 		 * mappings (search indexing, extra terms). Not fired for unchanged entries.
 		 */
 		do_action( 'afr_synced', $post_id, $entry, $content_type );
 
+		$warnings = $type['placed'] ? AFR_Placement::warnings( $entry ) : [];
+
 		return [
 			'status'   => $status,
-			'message'  => sprintf( '%s #%d %s (rev %s)', $status, $post_id, $entry_id, $revision ),
+			'message'  => sprintf( '%s #%d %s (rev %s)', $status, $post_id, $entry_id, $revision )
+				. ( $warnings ? ' — warning: ' . implode( '; ', $warnings ) : '' ),
 			'post_id'  => $post_id,
 			'entry_id' => $entry_id,
 		];

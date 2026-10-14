@@ -1,6 +1,10 @@
 /**
  * Builds the Field Report v1 content model from field-report-contentful-plan.md.
  *
+ * Placement (1.9.0): Functional areas, Publish to and Publication date are added
+ * beside the old Community links and Show on, which stay until both sites read the
+ * new fields. migrate-places.mjs fills the new fields on existing entries.
+ *
  * - Creates the target environment (from master) if it doesn't exist. Never runs against master.
  * - Idempotent: safe to re-run; existing content types are updated in place.
  * - Creates the content types below: person, community, topicCategory, topic, mdTake,
@@ -13,6 +17,7 @@
  */
 import 'dotenv/config'
 import { createClient } from 'contentful-management'
+import { AUDIENCES, BOARDS, PLACES } from './places.mjs'
 
 const spaceId = process.env.CONTENTFUL_SPACE_ID
 const accessToken = process.env.CONTENTFUL_MANAGEMENT_TOKEN
@@ -54,15 +59,19 @@ const assetLinks = (id, name, extra = {}) => ({
 })
 const boolean = (id, name, extra = {}) => ({ ...base, id, name, type: 'Boolean', ...extra })
 const integer = (id, name, extra = {}) => ({ ...base, id, name, type: 'Integer', ...extra })
+const date = (id, name, extra = {}) => ({ ...base, id, name, type: 'Date', ...extra })
+const checkboxes = (id, name, values, extra = {}) => ({
+  ...base, id, name, type: 'Array',
+  items: { type: 'Symbol', validations: [{ in: values }] },
+  ...extra,
+})
 const url = (id, name, extra = {}) => ({
   ...base, id, name, type: 'Symbol',
   validations: [{ regexp: { pattern: '^(https?://|/).+', flags: 'i' } }],
   ...extra,
 })
 
-const AUDIENCES = ['Public', 'Board Member', 'Board Chair', 'Network Member', 'Council Chair']
-
-// Sites a report may appear on. Each site's plugin syncs only the reports ticked for it.
+// The old "Show on" values. Superseded by Publish to; kept until both sites read it.
 const CHANNELS = ['Member Center', 'Public website']
 
 // Practice-area keys shared with the Member Center (Network practice_area) and the website (data-area).
@@ -194,21 +203,19 @@ const contentTypes = [
         symbol('headline', 'Headline', { required: true }),
         symbol('slug', 'Slug', { validations: [{ unique: true }] }),
         symbol('sourceLine', 'Source line'),
-        entryLink('primaryCommunity', 'Community', ['community'], { required: true }),
-        entryLinks('additionalCommunities', 'Additional communities', ['community']),
+        checkboxes('functionalAreas', 'Functional areas', BOARDS),
         entryLinks('topics', 'Topics', ['topic']),
         entryLink('author', 'Author', ['person']),
         assetLink('featuredImage', 'Featured image'),
-        {
-          ...base, id: 'availableTo', name: 'Available to', type: 'Array',
-          items: { type: 'Symbol', validations: [{ in: AUDIENCES }] },
-        },
+        checkboxes('publishTo', 'Publish to', PLACES),
+        checkboxes('availableTo', 'Who can read it', AUDIENCES),
+        date('publishDate', 'Publication date'),
+        // Superseded by Functional areas and Publish to; removed once both sites read those.
+        entryLink('primaryCommunity', 'Community (old: use Functional areas)', ['community']),
+        entryLinks('additionalCommunities', 'Additional communities (old: use Functional areas)', ['community']),
+        checkboxes('showOn', 'Show on (old: use Publish to)', CHANNELS),
         // Promotion. Drives the homepage stream and the Peer Intelligence
         // carousel on the website; nothing else reads these.
-        {
-          ...base, id: 'showOn', name: 'Show on', type: 'Array',
-          items: { type: 'Symbol', validations: [{ in: CHANNELS }] },
-        },
         boolean('featured', 'Featured'),
         integer('featuredRank', 'Featured rank', { validations: [{ range: { min: 1, max: 99 } }] }),
         // Standard report
@@ -236,9 +243,14 @@ const contentTypes = [
     controls: [
       { fieldId: 'slug', widgetId: 'slugEditor', settings: { trackingFieldId: 'headline' } },
       { fieldId: 'sourceLine', widgetId: 'singleLine', settings: { helpText: 'Final formatted source line, e.g. “From the March 2026 AEO Board discussion.”' } },
-      { fieldId: 'showOn', widgetId: 'checkbox', settings: { helpText: 'Where this report appears once published. A site only shows reports ticked for it; untick to take a report off that site. Who can read it there is still set by Available to.' } },
-      { fieldId: 'topics', widgetId: 'entryLinksEditor', settings: { helpText: 'One to four topics, chosen from the topics offered in this report’s communities. Practice area is not set here: it comes from the communities.' } },
-      { fieldId: 'availableTo', widgetId: 'checkbox', settings: { helpText: 'Public: headline + Picking Up the Story only. Other audiences: complete report. Council Chair: complete report plus the derived Key Takeaways at a Glance view.' } },
+      { fieldId: 'functionalAreas', widgetId: 'checkbox', settings: { helpText: 'The Boards this report is about. Practice area, and so colour, comes from these. Who sees the report is set by Publish to, not here.' } },
+      { fieldId: 'publishTo', widgetId: 'checkbox', settings: { helpText: 'Where this report appears: the Assemble Site and each Network, Board or Council. Untick a place to take the report off it. A Network only gets what is ticked for it.' } },
+      { fieldId: 'availableTo', widgetId: 'checkbox', settings: { helpText: 'Who can read the full report in the places above. Board Chairs count as Board Members; Council Members count as Board Members but never see Board-Chair-only reports. On the Assemble Site, Public readers get the free-read version.' } },
+      { fieldId: 'publishDate', widgetId: 'datePicker', settings: { format: 'dateonly', helpText: 'The date the report is filed under. Leave blank to use the discussion date in the source line, else the first publish date. Use Contentful scheduling to publish later.' } },
+      { fieldId: 'primaryCommunity', widgetId: 'entryLinkEditor', settings: { helpText: 'Old field. Use Functional areas instead.' } },
+      { fieldId: 'additionalCommunities', widgetId: 'entryLinksEditor', settings: { helpText: 'Old field. Use Functional areas instead.' } },
+      { fieldId: 'showOn', widgetId: 'checkbox', settings: { helpText: 'Old field. Use Publish to instead; it wins when both are set.' } },
+      { fieldId: 'topics', widgetId: 'entryLinksEditor', settings: { helpText: 'One to four topics, chosen from the topics offered in this report’s functional areas.' } },
       { fieldId: 'featured', widgetId: 'boolean', settings: { helpText: 'Promote this report to the front of the homepage stream and the Peer Intelligence carousel. Gating is unaffected — a featured report that a visitor cannot open still shows only its card.' } },
       { fieldId: 'featuredRank', widgetId: 'numberEditor', settings: { helpText: 'Order among featured reports, 1 first. Leave blank and it falls in by date behind the ranked ones.' } },
       { fieldId: 'mdTakes', widgetId: 'entryLinksEditor', settings: { helpText: 'One or more Story in Brief blocks, in display order.' } },
@@ -253,7 +265,7 @@ const contentTypes = [
       { fieldId: 'socialCopyOverride', widgetId: 'multipleLine', settings: { helpText: 'Leave blank to use Picking Up the Story as the source for social copy. Enter custom copy only when the report needs a more tailored social treatment.' } },
     ],
     tabs: [
-      { groupId: 'basics', name: 'Basics', fields: ['internalTitle', 'headline', 'slug', 'sourceLine', 'primaryCommunity', 'additionalCommunities', 'topics', 'author', 'featuredImage', 'showOn', 'availableTo', 'featured', 'featuredRank'] },
+      { groupId: 'basics', name: 'Basics', fields: ['internalTitle', 'headline', 'slug', 'sourceLine', 'functionalAreas', 'topics', 'author', 'featuredImage', 'publishTo', 'availableTo', 'publishDate', 'featured', 'featuredRank', 'primaryCommunity', 'additionalCommunities', 'showOn'] },
       { groupId: 'standardReport', name: 'Standard Report', fields: ['mdTakes', 'pickingUpSubhead', 'pickingUpBody', 'charts', 'pullquote', 'focusSubhead', 'focusBody', 'takeawaysStandard'] },
       { groupId: 'newsletterVersion', name: 'Newsletter Version', fields: ['newsletterSetup', 'newsletterFocus', 'newsletterImage', 'takeawaysNewsletter', 'recordingUrl'] },
       { groupId: 'variations', name: 'Variations', fields: ['takeawaysShort', 'socialCopyOverride'] },
@@ -295,19 +307,17 @@ const contentTypes = [
         symbol('slug', 'Slug', { required: true, validations: [{ unique: true }, { regexp: { pattern: '^[a-z0-9-]+$' } }] }),
         longText('dek', 'Dek'),
         symbol('edition', 'Edition'),
-        entryLink('community', 'Community', ['community'], { required: true }),
+        checkboxes('functionalAreas', 'Functional areas', BOARDS),
         entryLinks('topics', 'Topics', ['topic']),
         entryLink('author', 'Author', ['person']),
         entryLink('editor', 'Editor', ['person']),
         assetLink('featuredImage', 'Featured image'),
-        {
-          ...base, id: 'showOn', name: 'Show on', type: 'Array',
-          items: { type: 'Symbol', validations: [{ in: CHANNELS }] },
-        },
-        {
-          ...base, id: 'availableTo', name: 'Available to', type: 'Array',
-          items: { type: 'Symbol', validations: [{ in: AUDIENCES }] },
-        },
+        checkboxes('publishTo', 'Publish to', PLACES),
+        checkboxes('availableTo', 'Who can read it', AUDIENCES),
+        date('publishDate', 'Publication date'),
+        // Superseded by Functional areas and Publish to; removed once both sites read those.
+        entryLink('community', 'Community (old: use Functional areas)', ['community']),
+        checkboxes('showOn', 'Show on (old: use Publish to)', CHANNELS),
         richText('body', 'Body', { validations: PLAYBOOK_RT_VALIDATIONS }),
       ],
     },
@@ -315,16 +325,19 @@ const contentTypes = [
       { fieldId: 'slug', widgetId: 'slugEditor', settings: { trackingFieldId: 'title', helpText: 'The page address: /playbooks/<slug>/.' } },
       { fieldId: 'dek', widgetId: 'multipleLine', settings: { helpText: 'One or two sentences under the title. Also the description in search results and on cards.' } },
       { fieldId: 'edition', widgetId: 'singleLine', settings: { helpText: 'Shown under the dek, e.g. 2026 Edition.' } },
-      { fieldId: 'community', widgetId: 'entryLinkEditor', settings: { helpText: 'Supplies the breadcrumbs, the colour, the About card and the featured Summit.' } },
-      { fieldId: 'topics', widgetId: 'entryLinksEditor', settings: { helpText: 'One to four topics from this community’s categories.' } },
+      { fieldId: 'functionalAreas', widgetId: 'checkbox', settings: { helpText: 'The Boards this playbook is about. They supply the breadcrumbs, the colour (by practice area), the About card and the featured Summit.' } },
+      { fieldId: 'publishTo', widgetId: 'checkbox', settings: { helpText: 'Where this playbook appears: the Assemble Site and each Network, Board or Council.' } },
+      { fieldId: 'publishDate', widgetId: 'datePicker', settings: { format: 'dateonly', helpText: 'The date the playbook is filed under. Leave blank to use the first publish date.' } },
+      { fieldId: 'community', widgetId: 'entryLinkEditor', settings: { helpText: 'Old field. Use Functional areas instead.' } },
+      { fieldId: 'topics', widgetId: 'entryLinksEditor', settings: { helpText: 'One to four topics from the functional areas’ categories.' } },
       { fieldId: 'author', widgetId: 'entryLinkEditor', settings: { helpText: 'Shown as “Written by”, with the bio at the foot of the playbook.' } },
       { fieldId: 'editor', widgetId: 'entryLinkEditor', settings: { helpText: 'Shown as “Edited by”. Optional.' } },
-      { fieldId: 'showOn', widgetId: 'checkbox', settings: { helpText: 'Where this playbook appears once published. A site only shows playbooks ticked for it. Who can read it there is still set by Available to.' } },
-      { fieldId: 'availableTo', widgetId: 'checkbox', settings: { helpText: 'Public: the first chapter, then a prompt to join. Other audiences: the complete playbook.' } },
+      { fieldId: 'showOn', widgetId: 'checkbox', settings: { helpText: 'Old field. Use Publish to instead; it wins when both are set.' } },
+      { fieldId: 'availableTo', widgetId: 'checkbox', settings: { helpText: 'Who can read the complete playbook in the places above. On the Assemble Site, Public readers get the first chapter, then a prompt to join.' } },
       { fieldId: 'body', widgetId: 'richTextEditor', settings: { helpText: 'Heading 2 starts a chapter; Heading 3 a subsection. A line in italics straight after a Heading 3 is its subtitle. Pull-stats and the guidance list are Playbook Callout entries (Embed entry).' } },
     ],
     tabs: [
-      { groupId: 'basics', name: 'Basics', fields: ['title', 'slug', 'dek', 'edition', 'community', 'topics', 'author', 'editor', 'featuredImage', 'showOn', 'availableTo'] },
+      { groupId: 'basics', name: 'Basics', fields: ['title', 'slug', 'dek', 'edition', 'functionalAreas', 'topics', 'author', 'editor', 'featuredImage', 'publishTo', 'availableTo', 'publishDate', 'community', 'showOn'] },
       { groupId: 'bodyTab', name: 'Body', fields: ['body'] },
     ],
   },

@@ -104,17 +104,14 @@ class AFR_Contentful {
 			return [ 'items' => [], 'error' => sprintf( 'Content type %s is not registered.', $content_type ), 'total' => 0, 'complete' => false, 'pages' => 0 ];
 		}
 
-		$extra = [];
-		if ( $type['channel_field'] !== '' ) {
-			$channel = AFR_Settings::site_channel();
-			if ( $channel === '' ) {
-				// Incomplete on purpose: nothing syncs and nothing is drafted until the site says what it is.
-				return [ 'items' => [], 'error' => 'site channel not set (AFR_SITE_CHANNEL or afr_settings[site_channel]); nothing synced.', 'total' => 0, 'complete' => false, 'pages' => 0 ];
-			}
-			$extra[ 'fields.' . $type['channel_field'] . '[in]' ] = $channel;
+		// Placement is decided after the fetch (AFR_Placement::on_site), because
+		// "any Member Center place" and the showOn fallback can't be a CDA filter.
+		if ( $type['placed'] && AFR_Settings::site_channel() === '' ) {
+			// Incomplete on purpose: nothing syncs and nothing is drafted until the site says what it is.
+			return [ 'items' => [], 'error' => 'site channel not set (AFR_SITE_CHANNEL or afr_settings[site_channel]); nothing synced.', 'total' => 0, 'complete' => false, 'pages' => 0 ];
 		}
 
-		return self::get_all( $content_type, (int) $type['include'], (int) $type['page_size'], (string) $type['order'], $extra );
+		return self::get_all( $content_type, (int) $type['include'], (int) $type['page_size'], (string) $type['order'] );
 	}
 
 	/**
@@ -138,8 +135,18 @@ class AFR_Contentful {
 		return self::get_all( 'siteFeature', 0, 100, 'fields.rank,sys.id' );
 	}
 
-	/** Fetch one entry by ID, links resolved. Returns null when absent. */
+	/** Fetch one entry by ID, links resolved. Null when absent or when the request failed. */
 	public static function get_entry( string $entry_id ): ?array {
+		return self::get_entry_result( $entry_id )['entry'];
+	}
+
+	/**
+	 * Fetch one entry by ID, telling a failed request apart from an entry that
+	 * isn't published. Only `entry: null` with `error: ''` means unpublished.
+	 *
+	 * @return array{entry: ?array, error: string}
+	 */
+	public static function get_entry_result( string $entry_id ): array {
 		$result = self::get_entries(
 			[
 				'sys.id'  => $entry_id,
@@ -148,7 +155,10 @@ class AFR_Contentful {
 			]
 		);
 
-		return $result['items'][0] ?? null;
+		return [
+			'entry' => $result['items'][0] ?? null,
+			'error' => $result['error'],
+		];
 	}
 
 	/**

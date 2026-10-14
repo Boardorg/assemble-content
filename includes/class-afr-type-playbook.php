@@ -28,7 +28,6 @@ class AFR_Playbook_Type {
 				// goes through AFR_Playbook::view_model(), so this is never served raw.
 				'post_content' => AFR_Playbook::render_document( $entry ),
 				'post_excerpt' => AFR_Playbook::dek( $entry ),
-				'post_date'    => self::post_date( $entry ),
 			],
 			'meta' => [
 				AFR_CPT::META_AUDIENCES => (array) ( AFR_Contentful::field( $entry, 'availableTo', [] ) ),
@@ -37,10 +36,12 @@ class AFR_Playbook_Type {
 	}
 
 	public static function after_save( int $post_id, array $entry ): void {
-		$community = AFR_Contentful::field( $entry, 'community' );
-		$area      = is_array( $community ) ? sanitize_key( (string) ( AFR_Contentful::field( $community, 'practiceArea' ) ?? '' ) ) : '';
+		$areas = [];
+		foreach ( AFR_Placement::functional_areas( $entry ) as $community ) {
+			$areas[] = sanitize_key( (string) ( AFR_Contentful::field( $community, 'practiceArea' ) ?? '' ) );
+		}
 
-		self::set_multi_meta( $post_id, AFR_CPT::META_PRACTICE_AREAS, [ $area ] );
+		self::set_multi_meta( $post_id, AFR_CPT::META_PRACTICE_AREAS, $areas );
 		self::set_multi_meta( $post_id, AFR_CPT::META_TOPICS, wp_list_pluck( AFR_Query::entry_topics( $entry ), 'slug' ) );
 	}
 
@@ -50,13 +51,5 @@ class AFR_Playbook_Type {
 		foreach ( array_unique( array_filter( array_map( 'strval', $values ) ) ) as $value ) {
 			add_post_meta( $post_id, $key, $value );
 		}
-	}
-
-	/** First published in Contentful: the CDA's createdAt. Editions are named in the hero. */
-	private static function post_date( array $entry ): string {
-		$created = (string) ( $entry['sys']['createdAt'] ?? '' );
-		$ts      = $created ? strtotime( $created ) : false;
-
-		return $ts ? gmdate( 'Y-m-d H:i:s', $ts ) : current_time( 'mysql' );
 	}
 }

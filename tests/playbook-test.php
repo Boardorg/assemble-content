@@ -101,7 +101,7 @@ try {
 	// 1. Registry and post type.
 	$afr_type = AFR_Types::get( 'playbook' );
 	afr_pb_check( is_array( $afr_type ) && 'playbook' === $afr_type['post_type'] && $afr_type['gated'], 'registry: playbook entry, gated' );
-	afr_pb_check( 'playbooks' === ( $afr_type['slug'] ?? '' ) && 'showOn' === ( $afr_type['channel_field'] ?? '' ), 'registry: slug playbooks, channel showOn' );
+	afr_pb_check( 'playbooks' === ( $afr_type['slug'] ?? '' ) && true === ( $afr_type['placed'] ?? null ), 'registry: slug playbooks, placed by Publish to' );
 	afr_pb_check( in_array( 'playbookCallout', $afr_type['dependencies'] ?? [], true ), 'registry: callout changes re-sync playbooks' );
 	$afr_pto = get_post_type_object( 'playbook' );
 	afr_pb_check( $afr_pto && false === $afr_pto->show_in_rest && false === $afr_pto->show_ui, 'post type: no REST, no admin UI' );
@@ -111,7 +111,7 @@ try {
 	$afr_map = AFR_Playbook_Type::map( $afr_entry );
 	afr_pb_check( 'Test Playbook Title' === $afr_map['post']['post_title'] && 'afr-test-playbook' === $afr_map['post']['post_name'], 'map: title and slug' );
 	afr_pb_check( 'A dek for the test playbook.' === $afr_map['post']['post_excerpt'], 'map: excerpt is the dek' );
-	afr_pb_check( '2026-09-01 12:00:00' === $afr_map['post']['post_date'], 'map: date from createdAt' );
+	afr_pb_check( '2026-09-01 12:00:00' === AFR_Post_Date::for_entry( $afr_entry )['post_date_gmt'], 'date: from createdAt, in GMT' );
 	afr_pb_check( str_contains( $afr_map['post']['post_content'], 'MEMBERS phase body paragraph' ) && str_contains( $afr_map['post']['post_content'], 'MEMBERS recency' ), 'map: stored content has the body and callouts (for search)' );
 	afr_pb_check( [ 'Board Member' ] === $afr_map['meta'][ AFR_CPT::META_AUDIENCES ], 'map: audiences meta' );
 

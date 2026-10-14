@@ -19,7 +19,9 @@ class AFR_REST {
 	public const ROUTE     = '/contentful';
 
 	private const SECRET_HEADER = 'X-AFR-Secret';
-	private const LOCK_KEY      = 'afr_webhook_lock';
+
+	/** Object-cache group for per-entry locks, each held at most a minute. */
+	private const LOCK_GROUP = 'afr_webhook';
 
 	public static function init(): void {
 		add_action( 'rest_api_init', [ self::class, 'register_routes' ] );
@@ -81,15 +83,41 @@ class AFR_REST {
 			);
 		}
 
-		// Contentful retries and can fire several webhooks for one editorial save.
-		if ( get_transient( self::LOCK_KEY ) === $entry_id ) {
+		// Contentful retries and can repeat a delivery. Only the same topic, entry and
+		// revision counts as a repeat, and only once it was handled successfully, so a
+		// publish followed quickly by an unpublish is never dropped.
+		$dedupe_key = 'afr_webhook_' . md5( $topic . '|' . $entry_id . '|' . (string) ( $payload['sys']['revision'] ?? '' ) );
+		if ( get_transient( $dedupe_key ) ) {
 			return new WP_REST_Response(
-				[ 'ok' => true, 'skipped' => 'duplicate delivery within 10s', 'entry' => $entry_id ],
+				[ 'ok' => true, 'skipped' => 'duplicate delivery', 'entry' => $entry_id ],
 				200
 			);
 		}
-		set_transient( self::LOCK_KEY, $entry_id, 10 );
 
+		// One delivery per entry at a time, so two can't both create its post. A
+		// busy entry answers 503, which Contentful retries.
+		if ( ! wp_cache_add( $entry_id, 1, self::LOCK_GROUP, MINUTE_IN_SECONDS ) ) {
+			return new WP_REST_Response(
+				[ 'ok' => false, 'reason' => 'entry is already syncing; retry', 'entry' => $entry_id ],
+				503
+			);
+		}
+
+		try {
+			$response = self::process( $topic, $entry_id, $content_type, $type );
+		} finally {
+			wp_cache_delete( $entry_id, self::LOCK_GROUP );
+		}
+
+		if ( $response->get_status() < 300 ) {
+			set_transient( $dedupe_key, 1, MINUTE_IN_SECONDS );
+		}
+
+		return $response;
+	}
+
+	/** Sync whatever one delivery is about. */
+	private static function process( string $topic, string $entry_id, string $content_type, string $type ): WP_REST_Response {
 		// Assets have no content type; a changed chart or headshot affects every
 		// report that embeds it, so treat it like a dependency change.
 		// Which types are dependencies comes from the registry (e.g. a changed `person`

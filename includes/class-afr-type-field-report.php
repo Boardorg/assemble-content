@@ -29,7 +29,6 @@ class AFR_Field_Report_Type {
 				// Display always re-renders per audience, so this is never served raw.
 				'post_content' => AFR_Renderer::render_report( $entry ),
 				'post_excerpt' => self::excerpt( $entry ),
-				'post_date'    => self::post_date( $entry ),
 			],
 			'meta' => [
 				AFR_CPT::META_AUDIENCES     => (array) ( AFR_Contentful::field( $entry, 'availableTo', [] ) ),
@@ -59,25 +58,12 @@ class AFR_Field_Report_Type {
 	}
 
 	/**
-	 * Primary community first, then the additional ones, as resolved entries.
+	 * The functional areas, in the editor's order, as resolved entries.
 	 *
 	 * @return array<int,array>
 	 */
 	private static function communities( array $entry ): array {
-		$communities = [];
-
-		$primary = AFR_Contentful::field( $entry, 'primaryCommunity' );
-		if ( is_array( $primary ) ) {
-			$communities[] = $primary;
-		}
-
-		foreach ( (array) AFR_Contentful::field( $entry, 'additionalCommunities', [] ) as $extra ) {
-			if ( is_array( $extra ) ) {
-				$communities[] = $extra;
-			}
-		}
-
-		return $communities;
+		return AFR_Placement::functional_areas( $entry );
 	}
 
 	/** Communities become terms in the community taxonomy. */
@@ -165,25 +151,5 @@ class AFR_Field_Report_Type {
 		}
 
 		return wp_trim_words( AFR_RichText::to_text( AFR_Contentful::field( $entry, 'pickingUpBody' ) ), 40 );
-	}
-
-	/**
-	 * Date the report from its source line where possible — a report about a
-	 * 2026-06-16 discussion should not be dated by when it was synced.
-	 */
-	private static function post_date( array $entry ): string {
-		$source = (string) ( AFR_Contentful::field( $entry, 'sourceLine' ) ?? '' );
-
-		if ( preg_match( '/\b([A-Z][a-z]+ \d{1,2},? \d{4})\b/', $source, $m ) ) {
-			$ts = strtotime( $m[1] );
-			if ( $ts ) {
-				return gmdate( 'Y-m-d H:i:s', $ts );
-			}
-		}
-
-		$created = (string) ( $entry['sys']['createdAt'] ?? '' );
-		$ts      = $created ? strtotime( $created ) : false;
-
-		return $ts ? gmdate( 'Y-m-d H:i:s', $ts ) : current_time( 'mysql' );
 	}
 }

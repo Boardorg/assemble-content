@@ -28,6 +28,7 @@ class AFR_Settings {
 		'Board Chair'    => [ 'um_board-chair' ],
 		'Delegate'       => [ 'um_delegate' ],
 		'Network Member' => [ 'um_network-member' ],
+		'Council Member' => [ 'um_council-member' ],
 		'Council Chair'  => [ 'um_council-chair' ],
 	];
 
@@ -50,8 +51,8 @@ class AFR_Settings {
 	}
 
 	/**
-	 * Which Contentful "Show on" channel this site is: 'Public website' or 'Member Center'.
-	 * A site only syncs reports ticked for its channel; with none set it syncs none.
+	 * Which site this is: 'Public website' (or 'Assemble Site') or 'Member Center'.
+	 * A site only syncs pieces published to it (AFR_Placement); with none set it syncs none.
 	 */
 	public static function site_channel(): string {
 		$stored = get_option( self::OPTION, [] );

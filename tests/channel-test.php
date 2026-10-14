@@ -45,7 +45,7 @@ AFR_Sync::sync_all( true, 'test' );
 $ok( $published() === $baseline, 'back on Public website: all restored' );
 
 foreach ( get_posts( [ 'post_type' => AFR_CPT::POST_TYPE, 'numberposts' => -1 ] ) as $p ) {
-	$ok( AFR_Sync::on_channel( (array) AFR_Renderer::data( $p->ID ), 'showOn' ), "#{$p->ID} is ticked for Public website" );
+	$ok( AFR_Placement::on_site( (array) AFR_Renderer::data( $p->ID ) ), "#{$p->ID} is published to the Assemble Site" );
 }
 remove_all_filters( 'afr_site_channel' );
 
