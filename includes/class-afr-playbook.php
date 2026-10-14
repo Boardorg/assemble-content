@@ -93,12 +93,14 @@ class AFR_Playbook {
 
 		if ( ! $entry ) {
 			return [
-				'view'      => '',
-				'post_id'   => $post_id,
-				'sections'  => [],
-				'words'     => 0,
-				'full_text' => false,
-				'notices'   => [ 'preview' => '', 'bypass' => '' ],
+				'view'             => '',
+				'post_id'          => $post_id,
+				'sections'         => [],
+				'words'            => 0,
+				'full_text'        => false,
+				'functional_areas' => [],
+				'places'           => [],
+				'notices'          => [ 'preview' => '', 'bypass' => '' ],
 			];
 		}
 
@@ -132,12 +134,14 @@ class AFR_Playbook {
 		$view = self::normalise_view( $view );
 
 		return [
-			'view'      => $view,
-			'post_id'   => $post_id,
-			'sections'  => self::sections( $entry, $view ),
-			'words'     => self::words( self::chapters( $entry ) ),
-			'full_text' => false,
-			'notices'   => [ 'preview' => '', 'bypass' => '' ],
+			'view'             => $view,
+			'post_id'          => $post_id,
+			'sections'         => self::sections( $entry, $view ),
+			'words'            => self::words( self::chapters( $entry ) ),
+			'full_text'        => false,
+			'functional_areas' => AFR_Renderer::functional_areas_data( $entry ),
+			'places'           => AFR_Placement::places( $entry ),
+			'notices'          => [ 'preview' => '', 'bypass' => '' ],
 		];
 	}
 

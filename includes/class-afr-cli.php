@@ -87,7 +87,8 @@ class AFR_CLI {
 		$problems = [];
 
 		if ( $entry_id !== '' ) {
-			$fetches = [ '' => [ 'items' => array_filter( [ AFR_Contentful::get_entry( $entry_id ) ] ), 'error' => '', 'complete' => true ] ];
+			$one     = AFR_Contentful::get_entry_result( $entry_id );
+			$fetches = [ '' => [ 'items' => array_filter( [ $one['entry'] ] ), 'error' => $one['error'], 'complete' => '' === $one['error'] ] ];
 		} else {
 			$fetches = [];
 			foreach ( AFR_Types::all() as $content_type => $type ) {
@@ -103,13 +104,30 @@ class AFR_CLI {
 			}
 
 			$seen = [];
+			$off  = [];
 			foreach ( $fetch['items'] as $entry ) {
+				$entry   = AFR_Placement::normalize( $entry );
 				$id      = (string) ( $entry['sys']['id'] ?? '?' );
 				$ctype   = (string) ( $entry['sys']['contentType']['sys']['id'] ?? '' );
+				$placed  = ! empty( AFR_Types::get( $ctype )['placed'] );
+				$on_site = ! $placed || AFR_Placement::on_site( $entry );
 				$post_id = AFR_Sync::find_post_by_entry_id( $id );
 				$rev     = (string) ( $entry['sys']['revision'] ?? '' );
 				$known   = $post_id ? (string) get_post_meta( $post_id, AFR_CPT::META_REVISION, true ) : '';
-				$seen[]  = $id;
+
+				if ( $on_site ) {
+					$seen[] = $id;
+					$action = ! $post_id ? 'create' : ( $known === $rev && get_post_status( $post_id ) === 'publish' ? 'unchanged' : 'update' );
+				} else {
+					$off[]  = $id;
+					$action = $post_id && get_post_status( $post_id ) === 'publish' ? 'draft (not on this site)' : 'skip (not on this site)';
+				}
+
+				if ( $on_site && $placed ) {
+					foreach ( AFR_Placement::warnings( $entry ) as $warning ) {
+						$problems[] = sprintf( '%s: %s', $id, $warning );
+					}
+				}
 
 				$rows[] = [
 					'type'      => $ctype,
@@ -117,8 +135,9 @@ class AFR_CLI {
 					'headline'  => wp_trim_words( (string) ( AFR_Contentful::field( $entry, 'headline' ) ?? AFR_Contentful::field( $entry, 'title' ) ?? '' ), 9 ),
 					'post'      => $post_id ?: '—',
 					'rev'       => $rev,
-					'action'    => ! $post_id ? 'create' : ( $known === $rev && get_post_status( $post_id ) === 'publish' ? 'unchanged' : 'update' ),
+					'action'    => $action,
 					'audiences' => implode( '/', (array) AFR_Contentful::field( $entry, 'availableTo', [] ) ),
+					'places'    => implode( '/', AFR_Placement::places( $entry ) ),
 				];
 			}
 
@@ -139,7 +158,7 @@ class AFR_CLI {
 			);
 			foreach ( $posts as $post_id ) {
 				$known_id = (string) get_post_meta( (int) $post_id, AFR_CPT::META_ENTRY_ID, true );
-				if ( $known_id !== '' && ! in_array( $known_id, $seen, true ) ) {
+				if ( $known_id !== '' && ! in_array( $known_id, $seen, true ) && ! in_array( $known_id, $off, true ) ) {
 					$rows[] = [
 						'type'      => $content_type,
 						'entry'     => $known_id,
@@ -148,12 +167,13 @@ class AFR_CLI {
 						'rev'       => '',
 						'action'    => 'draft',
 						'audiences' => '',
+						'places'    => '',
 					];
 				}
 			}
 		}
 
-		WP_CLI\Utils\format_items( 'table', $rows, [ 'type', 'entry', 'headline', 'post', 'rev', 'action', 'audiences' ] );
+		WP_CLI\Utils\format_items( 'table', $rows, [ 'type', 'entry', 'headline', 'post', 'rev', 'action', 'audiences', 'places' ] );
 
 		foreach ( $problems as $problem ) {
 			WP_CLI::warning( $problem );
@@ -208,7 +228,7 @@ class AFR_CLI {
 		WP_CLI::log( 'Contentful' );
 		WP_CLI::log( '  space:        ' . ( $settings['space_id'] ?: '(not set)' ) );
 		WP_CLI::log( '  environment:  ' . $settings['environment'] );
-		WP_CLI::log( '  site channel: ' . ( $settings['site_channel'] !== '' ? $settings['site_channel'] : '(not set — no reports sync)' ) );
+		WP_CLI::log( '  site channel: ' . ( $settings['site_channel'] !== '' ? $settings['site_channel'] : '(not set — nothing syncs)' ) );
 		WP_CLI::log( '  CDA token:    ' . ( $settings['delivery_token'] ? 'set' : '(not set)' ) );
 		WP_CLI::log( '  webhook:      ' . ( $settings['webhook_secret'] ? 'secret set' : 'DISABLED (no secret)' ) );
 		WP_CLI::log( '  webhook URL:  ' . AFR_REST::webhook_url() );

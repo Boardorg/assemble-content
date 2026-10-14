@@ -158,6 +158,53 @@ class AFR_Query {
 	}
 
 	/**
+	 * Newest pieces published to any of these places (`publishTo` names, e.g.
+	 * 'HR Network'). Lists only; never decides who may read a body.
+	 *
+	 * @param string[] $places    Place names.
+	 * @param string[] $post_type Synced post types; defaults to Field Reports.
+	 * @param array    $args      Extra get_posts() args.
+	 * @return WP_Post[]
+	 */
+	public static function for_places( array $places, int $limit = 10, array $args = [], array $post_type = [ AFR_CPT::POST_TYPE ] ): array {
+		$slugs = array_values( array_filter( array_map( [ AFR_Placement::class, 'slug' ], $places ) ) );
+		if ( ! $slugs ) {
+			return [];
+		}
+
+		return get_posts(
+			array_merge(
+				[
+					'post_type'   => $post_type,
+					'post_status' => 'publish',
+					'numberposts' => $limit,
+					'orderby'     => 'date',
+					'order'       => 'DESC',
+				],
+				$args,
+				[
+					'tax_query' => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query -- one indexed term lookup.
+						[
+							'taxonomy' => AFR_Placement::TAXONOMY,
+							'field'    => 'slug',
+							'terms'    => $slugs,
+						],
+					],
+				]
+			)
+		);
+	}
+
+	/**
+	 * A piece's place names.
+	 *
+	 * @return string[]
+	 */
+	public static function places( int $post_id ): array {
+		return AFR_Placement::post_places( $post_id );
+	}
+
+	/**
 	 * A report's Member Center group slugs.
 	 *
 	 * @return string[]

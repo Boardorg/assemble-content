@@ -111,6 +111,7 @@ class AFR_Preview {
 		}
 
 		$entry = AFR_Contentful::get_preview_entry( $entry_id );
+		$entry = is_array( $entry ) ? AFR_Placement::normalize( $entry ) : null;
 		$type  = is_array( $entry ) ? (string) ( $entry['sys']['contentType']['sys']['id'] ?? '' ) : '';
 		$types = AFR_Types::all();
 

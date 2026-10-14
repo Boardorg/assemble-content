@@ -26,6 +26,8 @@ class AFR_Types {
 	 * - page_size     (int)      Entries per CDA page. Lower it if responses near the ~7MB cap.
 	 * - order         (string)   CDA order for the full fetch. Keep it immutable (default sys.id).
 	 * - gated         (bool)     Whether entries carry audience-gated content.
+	 * - placed        (bool)     Whether entries sync only where `publishTo` (or the older
+	 *                            `showOn`) places them. See AFR_Placement.
 	 * - dependencies  (string[]) Content types whose changes re-sync every entry of this type.
 	 * - map           (callable) fn( array $entry ): array{post: array, meta: array} — post
 	 *                            fields (title required) and type-specific post meta.
@@ -46,8 +48,8 @@ class AFR_Types {
 				'page_size'    => 100,
 				'gated'        => true,
 				'dependencies' => [ 'mdTake', 'person', 'community', 'topic', 'topicCategory' ],
-				// Contentful "Show on": only entries ticked for this site's channel sync.
-				'channel_field' => 'showOn',
+				// Only entries placed on this site sync (AFR_Placement).
+				'placed'       => true,
 				'map'          => [ AFR_Field_Report_Type::class, 'map' ],
 				'after_save'   => [ AFR_Field_Report_Type::class, 'after_save' ],
 				// The July theme reads has_post_thumbnail() for its placeholder image.
@@ -65,7 +67,7 @@ class AFR_Types {
 				'page_size'     => 50,
 				'gated'         => true,
 				'dependencies'  => [ 'person', 'community', 'topic', 'topicCategory', AFR_Playbook::CALLOUT_TYPE ],
-				'channel_field' => 'showOn',
+				'placed'        => true,
 				'map'           => [ AFR_Playbook_Type::class, 'map' ],
 				'after_save'    => [ AFR_Playbook_Type::class, 'after_save' ],
 			],
@@ -82,6 +84,11 @@ class AFR_Types {
 		$types = (array) apply_filters( 'afr_content_types', $types );
 
 		foreach ( $types as $id => $type ) {
+			// Before 1.9.0 a placed type named its `showOn` field instead.
+			if ( ! empty( $type['channel_field'] ) && ! isset( $type['placed'] ) ) {
+				$type['placed'] = true;
+			}
+
 			$types[ $id ] = wp_parse_args(
 				(array) $type,
 				[
@@ -94,7 +101,7 @@ class AFR_Types {
 					'order'          => 'sys.id',
 					'gated'          => false,
 					'dependencies'   => [],
-					'channel_field'  => '',
+					'placed'         => false,
 					'map'            => null,
 					'after_save'     => null,
 					'register'       => true,

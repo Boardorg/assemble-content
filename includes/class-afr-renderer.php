@@ -25,19 +25,14 @@ class AFR_Renderer {
 
 	/**
 	 * Primary colours from the function grid in the 2026 Brand Identity
-	 * Guidelines (§2.5). Colour follows content: every community in the model
-	 * today is a marketing or social community, so all four map to Marketing.
-	 * Add a community under a different function and give it that function's
-	 * primary — do not invent a shade.
-	 *
-	 *   Technology #9A1B37   Finance #065E31   Mfg & Supply Chain #1D458B
-	 *   Human Resources #572F8B   Marketing #00575D
+	 * Guidelines (§2.5), by practice area. Colour follows the practice.
 	 */
-	private const COMMUNITY_ACCENTS = [
-		'aeo'                                      => '#00575D', // Marketing
-		'socialmedia-org'                          => '#00575D',
-		'socialmedia-org-health'                   => '#00575D',
-		'digital-marketing-communications-council' => '#00575D',
+	private const PRACTICE_ACCENTS = [
+		'technology'      => '#9A1B37',
+		'finance'         => '#065E31',
+		'manufacturing'   => '#1D458B',
+		'human-resources' => '#572F8B',
+		'marketing'       => '#00575D',
 	];
 
 	private const ACCENT_DEFAULT = '#00575D';
@@ -238,19 +233,26 @@ class AFR_Renderer {
 	 *   person = { name, role, organization, bio, image: asset|null, image_url }
 	 *   button = { url, label }
 	 *
-	 * @return array{view:string,post_id:int,sections:array<string,mixed>,words:int,full_text:bool,notices:array{preview:string,bypass:string}}
+	 * - `functional_areas`: every Board the report is about, in the editor's order,
+	 *   each shaped like `kicker`. Identity only, the same for every view. `kicker`
+	 *   is the first; a site that knows where the reader is chooses from this list.
+	 * - `places`: the `publishTo` names (Assemble Site, Networks, Boards, Councils).
+	 *
+	 * @return array{view:string,post_id:int,sections:array<string,mixed>,words:int,full_text:bool,functional_areas:array,places:string[],notices:array{preview:string,bypass:string}}
 	 */
 	public static function view_model( int $post_id ): array {
 		$entry = self::data( $post_id );
 
 		if ( ! $entry ) {
 			return [
-				'view'      => '',
-				'post_id'   => $post_id,
-				'sections'  => [],
-				'words'     => 0,
-				'full_text' => false,
-				'notices'   => [ 'preview' => '', 'bypass' => '' ],
+				'view'             => '',
+				'post_id'          => $post_id,
+				'sections'         => [],
+				'words'            => 0,
+				'full_text'        => false,
+				'functional_areas' => [],
+				'places'           => [],
+				'notices'          => [ 'preview' => '', 'bypass' => '' ],
 			];
 		}
 
@@ -297,12 +299,14 @@ class AFR_Renderer {
 		$sections = self::sections( $post_id, $entry, $view );
 
 		return [
-			'view'      => $view,
-			'post_id'   => $post_id,
-			'sections'  => $sections,
-			'words'     => self::words( $sections ),
-			'full_text' => false,
-			'notices'   => [ 'preview' => '', 'bypass' => '' ],
+			'view'             => $view,
+			'post_id'          => $post_id,
+			'sections'         => $sections,
+			'words'            => self::words( $sections ),
+			'full_text'        => false,
+			'functional_areas' => self::functional_areas_data( $entry ),
+			'places'           => AFR_Placement::places( $entry ),
+			'notices'          => [ 'preview' => '', 'bypass' => '' ],
 		];
 	}
 
@@ -388,10 +392,21 @@ class AFR_Renderer {
 	public static function community_data( array $entry, string $field = 'primaryCommunity' ): ?array {
 		$community = AFR_Contentful::field( $entry, $field );
 
-		if ( ! is_array( $community ) ) {
-			return null;
-		}
+		return is_array( $community ) ? self::community_summary( $community ) : null;
+	}
 
+	/**
+	 * Every functional area, in the editor's order, as community_data() shapes.
+	 * The first is the kicker; a site that knows the reader's context picks another.
+	 *
+	 * @return array<int,array>
+	 */
+	public static function functional_areas_data( array $entry ): array {
+		return array_map( [ self::class, 'community_summary' ], AFR_Placement::functional_areas( $entry ) );
+	}
+
+	/** One community entry as { name, short_name, slug, practice_area, logo, logo_url }. */
+	public static function community_summary( array $community ): array {
 		$name = (string) ( AFR_Contentful::field( $community, 'name' ) ?? '' );
 		$logo = AFR_Contentful::field( $community, 'logo' );
 
@@ -754,19 +769,25 @@ class AFR_Renderer {
 		return self::accent( $entry );
 	}
 
-	/** Community accent colour — colour follows content. */
+	/**
+	 * Accent colour from the first functional area's practice. A site that knows
+	 * where the reader is (a Network, a practice page) overrides it.
+	 */
 	private static function accent( array $entry ): string {
-		$community = AFR_Contentful::field( $entry, 'primaryCommunity' );
+		$community = AFR_Placement::functional_areas( $entry )[0] ?? null;
 		$slug      = is_array( $community ) ? sanitize_title( (string) ( AFR_Contentful::field( $community, 'slug' ) ?? '' ) ) : '';
-		$accent    = self::COMMUNITY_ACCENTS[ $slug ] ?? self::ACCENT_DEFAULT;
+		$practice  = is_array( $community ) ? sanitize_key( (string) ( AFR_Contentful::field( $community, 'practiceArea' ) ?? '' ) ) : '';
+		$accent    = self::PRACTICE_ACCENTS[ $practice ] ?? self::ACCENT_DEFAULT;
 
 		/**
 		 * Filter the accent colour for a report.
 		 *
-		 * @param string $accent Hex value from the Assemble functional palette.
-		 * @param string $slug   Primary community slug.
+		 * @param string $accent   Hex value from the Assemble functional palette.
+		 * @param string $slug     First functional area's community slug.
+		 * @param string $practice That community's practice area.
+		 * @param array  $entry    The report.
 		 */
-		return (string) apply_filters( 'afr_accent_color', $accent, $slug );
+		return (string) apply_filters( 'afr_accent_color', $accent, $slug, $practice, $entry );
 	}
 
 	private static function note_html( array $s ): string {
@@ -1005,18 +1026,6 @@ class AFR_Renderer {
 	}
 
 	private static function report_timestamp( array $entry ): int {
-		$source = (string) ( AFR_Contentful::field( $entry, 'sourceLine' ) ?? '' );
-
-		if ( preg_match( '/\b([A-Z][a-z]+ \d{1,2},? \d{4})\b/', $source, $m ) ) {
-			$ts = strtotime( $m[1] );
-			if ( $ts ) {
-				return $ts;
-			}
-		}
-
-		$created = (string) ( $entry['sys']['createdAt'] ?? '' );
-		$ts      = $created ? strtotime( $created ) : false;
-
-		return $ts ?: 0;
+		return AFR_Post_Date::timestamp( $entry );
 	}
 }
