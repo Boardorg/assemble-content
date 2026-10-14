@@ -20,12 +20,8 @@ class AFR_REST {
 
 	private const SECRET_HEADER = 'X-AFR-Secret';
 
-	/** Object-cache group for per-entry locks. */
+	/** Object-cache group for per-entry locks, each held at most a minute. */
 	private const LOCK_GROUP = 'afr_webhook';
-
-	/** Seconds a delivery stays "already handled", and a lock is held at most. */
-	private const DEDUPE_TTL = 60;
-	private const LOCK_TTL   = 60;
 
 	public static function init(): void {
 		add_action( 'rest_api_init', [ self::class, 'register_routes' ] );
@@ -100,7 +96,7 @@ class AFR_REST {
 
 		// One delivery per entry at a time, so two can't both create its post. A
 		// busy entry answers 503, which Contentful retries.
-		if ( ! wp_cache_add( $entry_id, 1, self::LOCK_GROUP, self::LOCK_TTL ) ) {
+		if ( ! wp_cache_add( $entry_id, 1, self::LOCK_GROUP, MINUTE_IN_SECONDS ) ) {
 			return new WP_REST_Response(
 				[ 'ok' => false, 'reason' => 'entry is already syncing; retry', 'entry' => $entry_id ],
 				503
@@ -114,7 +110,7 @@ class AFR_REST {
 		}
 
 		if ( $response->get_status() < 300 ) {
-			set_transient( $dedupe_key, 1, self::DEDUPE_TTL );
+			set_transient( $dedupe_key, 1, MINUTE_IN_SECONDS );
 		}
 
 		return $response;
