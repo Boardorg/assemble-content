@@ -12,6 +12,8 @@ Each request is rendered for one audience view (standard, council, delegate, pub
 
 Without a theme that does this, the plugin renders its own `.afr-doc` document through `the_content`, formatted from the same sections.
 
+**`afr_view` (1.9.0).** `( string $view, int $post_id )` lets a site settle the final view when its own rules decide access. The Member Center uses it: a member who may read a piece gets `standard`, even when only Public is ticked, and nobody else gets a teaser.
+
 **Full text for Public reports (1.7.0, opt-in).** A site that runs a free-read meter can return true from `afr_public_full_text` (`( bool $full, int $post_id )`, default false). The public view of a report ticked Public then also carries its body sections (never engagement), and the view model's `full_text` is true; the site decides what to show. It has no effect on any other view, so members-only reports are never affected, and the plugin's own HTML render is unchanged. The public site turns it on (`assemble-core`); the Member Center needn't.
 
 ## Playbooks (1.8.0)
