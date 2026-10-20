@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name:       Assemble Content
- * Description:       The Assemble Content feed. Syncs published Contentful entries (Field Reports and playbooks) into hidden, gated post types. Webhook-driven, with WP-CLI commands and per-audience rendering.
- * Version:           1.9.0
+ * Description:       The Assemble Content feed. Syncs published Contentful entries (Field Reports and playbooks) into hidden, gated post types. Webhook-driven, with WP-CLI commands and per-audience rendering. Also reads summits from Executive Platforms' summit API.
+ * Version:           1.10.0
  * Requires PHP:      8.0
  * Author:            Assemble
  * Text Domain:       assemble-content
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'AFR_VERSION', '1.9.0' );
+define( 'AFR_VERSION', '1.10.0' );
 define( 'AFR_FILE', __FILE__ );
 define( 'AFR_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AFR_URL', plugin_dir_url( __FILE__ ) );
@@ -44,6 +44,9 @@ require_once AFR_DIR . 'includes/class-afr-query.php';
 require_once AFR_DIR . 'includes/class-afr-sync.php';
 require_once AFR_DIR . 'includes/class-afr-rest.php';
 require_once AFR_DIR . 'includes/class-afr-preview.php';
+require_once AFR_DIR . 'includes/class-afr-summits.php';
+require_once AFR_DIR . 'includes/class-afr-summit-extras.php';
+require_once AFR_DIR . 'includes/class-afr-summit-editions.php';
 
 AFR_CPT::init();
 AFR_Types::init();
@@ -54,10 +57,13 @@ AFR_Listing::init();
 AFR_REST::init();
 AFR_Preview::init();
 AFR_Settings::init();
+AFR_Summits::init();
 
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
 	require_once AFR_DIR . 'includes/class-afr-cli.php';
 	WP_CLI::add_command( 'assemble-content', 'AFR_CLI' );
+	require_once AFR_DIR . 'includes/class-afr-summits-cli.php';
+	WP_CLI::add_command( 'assemble-content summits', 'AFR_Summits_CLI' );
 	// Old name, kept as an alias until launch.
 	WP_CLI::add_command( 'field-report', 'AFR_CLI' );
 }
@@ -71,5 +77,6 @@ register_activation_hook( __FILE__, static function (): void {
 } );
 
 register_deactivation_hook( __FILE__, static function (): void {
+	wp_clear_scheduled_hook( AFR_Summits::CRON );
 	flush_rewrite_rules();
 } );
