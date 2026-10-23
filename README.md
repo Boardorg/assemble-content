@@ -87,6 +87,22 @@ Run `wp assemble-content sync --all --force` once after upgrading so existing po
 
 Formerly `assemble-field-reports`. Internal names (`afr_*` options, filters and post meta, `AFR_*` classes) are unchanged, so existing sites switch over without a data migration. Never activate both plugins at once.
 
+## Summits (1.10.0)
+
+Summit facts come from **Executive Platforms' summit API** (public, read-only; reference: the hub's `EP-SUMMITS-API-SPEC.md`), not from Contentful. EP stays the source of truth, and this plugin never writes to it. The reader lives here so both sites use one copy: the public site through `assemble-core`'s wrappers, the Member Center through its adapter.
+
+- **`AFR_Summits`: the index.** `GET /wp-json/ep/v1/summits?v=1` into the `afr_summits` option, hourly (WP-Cron `afr_summits_refresh`) and on demand, sent with the stored `ETag`, so an unchanged list is a 304 with no body. A refresh that looks wrong keeps the last good copy: unreachable, not the expected JSON, or a list that's empty or under half as long as before. A summit with no current edition or start date is left out with a warning. Read with `AFR_Summits::all( $upcoming_only )` (filter `afr_summits`), `with_extras()`, `get( $code )`, and build links with `AFR_Summits::url( $summit, 'details'|'register'|'agenda' )` (filter `afr_summit_url`), the one place that changes when a summit's pages move onto Assemble.
+- **`AFR_Summit_Extras`: Assemble's own fields per summit code**, which EP doesn't keep: `area`, `area_label`, `communities` (community directory slugs; `['*']` for every Community in its area), `blurb`, `logo`, plus the ad fields `format` (`in-person` or `virtual`), `cta_label`, `ad_headline`, `ad_pitch`, `image` and `video_url`/`video_caption`. An extra never overrides an EP fact; an unmapped summit gets the defaults. `logo` and `image` are paths in the shared image library under `wp-content/assets/`; a site that serves the library elsewhere uses `afr_summit_asset_url`. Change values without a commit through `afr_summit_extras`.
+- **`AFR_Summit_Editions`: full editions** (days, members' forum, sessions with stream parts, chairs, speakers), only for the codes a site lists in the `afr_summit_edition_codes` filter (none by default). Each is stored in `afr_summit_edition_{code}` (not autoloaded), with its own `ETag`, and refreshed with the index. Mapping rules, shared with the Delegate Sales Tool: logistics (`hospitality` slots, `announcement` sessions) are dropped; parts with no title yet are skipped; one-to-one meeting slots keep their description and lose their parts; stream labels come from the edition's streams by number; the members' forum is the day with `members_only`; "to be announced" people keep `tba` and their company, with no name. An edition that comes back with no days keeps the stored days. Part IDs are positional (EP renumbers lunch tables), so anything stored against a session should match by title first.
+
+Each run's outcome is stored in `afr_summits_status`. When the last run failed, or nothing has refreshed for three days, administrators see a notice in wp-admin. The HTTP calls run only from cron and WP-CLI, never while a page renders.
+
+```
+wp assemble-content summits refresh [--dry-run]
+wp assemble-content summits list [--all]
+wp assemble-content summits edition <code> [--year=<year>] [--dry-run] [--delete] [--format=summary|sessions|json]
+```
+
 ## WP-CLI
 
 ```
