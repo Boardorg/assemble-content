@@ -22,6 +22,10 @@ class AFR_Summits_CLI {
 	 *
 	 *     wp assemble-content summits refresh
 	 *     wp assemble-content summits refresh --dry-run
+	 *
+	 * @param array $args  Positional arguments (none).
+	 * @param array $assoc Flags.
+	 * @return void
 	 */
 	public function refresh( array $args, array $assoc ): void {
 		$result = AFR_Summits::refresh_and_record( isset( $assoc['dry-run'] ) );
@@ -57,6 +61,10 @@ class AFR_Summits_CLI {
 	 *
 	 * [--all]
 	 * : Include summits that have ended.
+	 *
+	 * @param array $args  Positional arguments (none).
+	 * @param array $assoc Flags.
+	 * @return void
 	 */
 	public function list( array $args, array $assoc ): void {
 		self::table( AFR_Summits::with_extras( ! isset( $assoc['all'] ) ) );
@@ -97,6 +105,10 @@ class AFR_Summits_CLI {
 	 *
 	 *     wp assemble-content summits edition nales --dry-run
 	 *     wp assemble-content summits edition nales --format=sessions
+	 *
+	 * @param array $args  Positional arguments: the summit code.
+	 * @param array $assoc Flags.
+	 * @return void
 	 */
 	public function edition( array $args, array $assoc ): void {
 		$code = (string) $args[0];
@@ -147,6 +159,12 @@ class AFR_Summits_CLI {
 		WP_CLI::success( sprintf( '%s %d: %s%s.', $code, $edition['year'], self::edition_summary( $edition ), $result['stored'] ? ', stored' : ( $result['unchanged'] ? ', unchanged (304)' : ', dry run' ) ) );
 	}
 
+	/**
+	 * A one-line count of an edition's days, sessions and speakers.
+	 *
+	 * @param array $edition A stored edition.
+	 * @return string
+	 */
 	private static function edition_summary( array $edition ): string {
 		$sessions = 0;
 		foreach ( $edition['days'] as $day ) {
@@ -158,6 +176,12 @@ class AFR_Summits_CLI {
 		return sprintf( '%d days, %d sessions, %d speakers', count( $edition['days'] ), $sessions, count( $edition['speakers'] ) );
 	}
 
+	/**
+	 * Print summits as a table.
+	 *
+	 * @param array $summits Stored summits, with or without extras.
+	 * @return void
+	 */
 	private static function table( array $summits ): void {
 		WP_CLI\Utils\format_items(
 			'table',

@@ -144,7 +144,6 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/test
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/public-full-text-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/playbook-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/type-isolation-test.php
-npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/summits-test.php
 ```
 
 `playbook-test.php` uses a synthetic entry: the registry entry and post type (no REST, no admin UI), the map, chapters, anchors, subtitles and callouts, every view's exact sections with members-only text absent from public and denied (and present in standard), real visitors (anonymous, anonymous `?afr_as=`, a stubbed Board Member, a Public playbook with and without full text), and `the_content` serving only the teaser. `type-isolation-test.php` serves the site's own synced entries back through a fake Delivery API and shows that a playbook sync never drafts a Field Report and a Field Report sync never drafts a playbook: per-type full syncs, a full sync with the other type offline, and the webhook path. Note that `channel-test.php` runs real syncs, so a local playbook that isn't published in Contentful gets drafted by it.

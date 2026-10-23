@@ -20,6 +20,9 @@
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Full summit editions: refresh, storage and mapping.
+ */
 class AFR_Summit_Editions {
 
 	public const OPTION_PREFIX = 'afr_summit_edition_';
@@ -41,14 +44,25 @@ class AFR_Summit_Editions {
 		return array_values( array_unique( array_filter( array_map( 'sanitize_key', array_map( 'strval', $codes ) ) ) ) );
 	}
 
-	/** The stored edition for a code, or null. */
+	/**
+	 * The stored edition for a code.
+	 *
+	 * @param string $code EP summit code.
+	 * @return array|null Null if none is stored.
+	 */
 	public static function get( string $code ): ?array {
 		$stored = get_option( self::OPTION_PREFIX . sanitize_key( $code ), [] );
 
 		return is_array( $stored['edition'] ?? null ) ? $stored['edition'] : null;
 	}
 
-	/** One speaker from a stored edition, or null. */
+	/**
+	 * One speaker from a stored edition.
+	 *
+	 * @param array  $edition    A stored edition.
+	 * @param string $speaker_id EP speaker ID.
+	 * @return array|null Null if the edition has no such speaker.
+	 */
 	public static function speaker( array $edition, string $speaker_id ): ?array {
 		return is_array( $edition['speakers'][ $speaker_id ] ?? null ) ? $edition['speakers'][ $speaker_id ] : null;
 	}
@@ -59,6 +73,9 @@ class AFR_Summit_Editions {
 	 * An edition with no days, where the stored copy of the same year has days,
 	 * keeps the stored days.
 	 *
+	 * @param string $code    EP summit code.
+	 * @param bool   $dry_run Fetch and map, store nothing.
+	 * @param int    $year    An edition year, or 0 for the current edition.
 	 * @return array{ok:bool,stored:bool,unchanged:bool,edition:?array,warnings:string[],error:string}
 	 */
 	public static function refresh( string $code, bool $dry_run = false, int $year = 0 ): array {
@@ -134,7 +151,12 @@ class AFR_Summit_Editions {
 		return $result;
 	}
 
-	/** Forget a stored edition. */
+	/**
+	 * Forget a stored edition.
+	 *
+	 * @param string $code EP summit code.
+	 * @return void
+	 */
 	public static function delete( string $code ): void {
 		delete_option( self::OPTION_PREFIX . sanitize_key( $code ) );
 	}
@@ -143,6 +165,7 @@ class AFR_Summit_Editions {
 	 * An edition response in the stored shape.
 	 *
 	 * @param array $body The decoded response: `edition`, `speakers`, `generated_at`.
+	 * @return array
 	 */
 	public static function map( array $body ): array {
 		$e       = (array) $body['edition'];
@@ -208,6 +231,13 @@ class AFR_Summit_Editions {
 		];
 	}
 
+	/**
+	 * One agenda day in the stored shape.
+	 *
+	 * @param array $day     A day from the edition response.
+	 * @param array $streams The edition's streams, keyed by number.
+	 * @return array
+	 */
 	private static function map_day( array $day, array $streams ): array {
 		$sessions = [];
 		foreach ( (array) ( $day['sessions'] ?? [] ) as $session ) {
@@ -238,7 +268,13 @@ class AFR_Summit_Editions {
 		];
 	}
 
-	/** One time slot, or null for logistics and for a slot left with nothing to show. */
+	/**
+	 * One time slot in the stored shape.
+	 *
+	 * @param array $s       A session from the edition response.
+	 * @param array $streams The edition's streams, keyed by number.
+	 * @return array|null Null for logistics and for a slot left with nothing to show.
+	 */
 	private static function map_session( array $s, array $streams ): ?array {
 		$kind = AFR_Summits::text( $s['kind'] ?? '' );
 		$type = AFR_Summits::text( $s['type'] ?? '' );
@@ -289,6 +325,12 @@ class AFR_Summit_Editions {
 		];
 	}
 
+	/**
+	 * The people on a session or part, in the stored shape.
+	 *
+	 * @param array $people People from the edition response.
+	 * @return array
+	 */
 	private static function map_people( array $people ): array {
 		$out = [];
 		foreach ( $people as $person ) {
@@ -311,6 +353,13 @@ class AFR_Summit_Editions {
 		return $out;
 	}
 
+	/**
+	 * One speaker in the stored shape.
+	 *
+	 * @param string $id EP speaker ID.
+	 * @param array  $s  The speaker from the edition response.
+	 * @return array
+	 */
 	private static function map_speaker( string $id, array $s ): array {
 		$tba      = ! empty( $s['tba'] );
 		$headshot = is_array( $s['headshot'] ?? null ) ? $s['headshot'] : [];

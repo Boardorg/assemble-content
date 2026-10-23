@@ -21,6 +21,9 @@
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * The EP summit index: refresh, storage, links and the admin notice.
+ */
 class AFR_Summits {
 
 	public const OPTION        = 'afr_summits';
@@ -29,6 +32,11 @@ class AFR_Summits {
 	public const API           = 'https://www.executiveplatforms.com/wp-json/ep/v1/summits?v=1';
 	public const TIMEOUT       = 20;
 
+	/**
+	 * Register the cron, schedule and admin notice hooks.
+	 *
+	 * @return void
+	 */
 	public static function init(): void {
 		add_action( self::CRON, [ __CLASS__, 'scheduled_refresh' ] );
 		add_action( 'init', [ __CLASS__, 'schedule' ] );
@@ -73,7 +81,12 @@ class AFR_Summits {
 		return array_map( static fn( array $summit ): array => AFR_Summit_Extras::merge( $summit, $extras ), self::all( $upcoming_only ) );
 	}
 
-	/** One summit by EP code, with extras, including past ones; null if unknown. */
+	/**
+	 * One summit by EP code, with extras, including past ones.
+	 *
+	 * @param string $code EP summit code.
+	 * @return array|null Null if unknown.
+	 */
 	public static function get( string $code ): ?array {
 		foreach ( self::with_extras( false ) as $summit ) {
 			if ( $summit['code'] === $code ) {
@@ -88,7 +101,9 @@ class AFR_Summits {
 	 * Where a summit link goes: its executiveplatforms.com page, EP's registration
 	 * page or its agenda. Summit pages on Assemble change only this.
 	 *
-	 * @param string $which 'details', 'register' or 'agenda'.
+	 * @param array  $summit A stored summit.
+	 * @param string $which  'details', 'register' or 'agenda'.
+	 * @return string
 	 */
 	public static function url( array $summit, string $which = 'details' ): string {
 		$url = (string) ( $summit['url'] ?? '' );
@@ -109,7 +124,11 @@ class AFR_Summits {
 		return (string) apply_filters( 'afr_summit_url', $url, $summit, $which );
 	}
 
-	/** When the summits were last refreshed (site timezone, 'Y-m-d H:i'), or ''. */
+	/**
+	 * When the summits were last refreshed.
+	 *
+	 * @return string Site timezone, 'Y-m-d H:i', or '' if never.
+	 */
 	public static function refreshed_at(): string {
 		$stored = get_option( self::OPTION, [] );
 
@@ -195,6 +214,8 @@ class AFR_Summits {
 	 * A GET to the EP API, conditional when an ETag is given. Called only from
 	 * the hourly cron and WP-CLI, never while rendering a page.
 	 *
+	 * @param string $url  The EP API URL.
+	 * @param string $etag The stored ETag, or '' for an unconditional request.
 	 * @return array|WP_Error
 	 */
 	public static function request( string $url, string $etag = '' ) {
@@ -218,6 +239,10 @@ class AFR_Summits {
 	 * The summit's display name. EP's `title` and `site_name` each name the edition
 	 * for only some summits, so take whichever ends in "… Edition", else `title`.
 	 * The dash before "Edition" is set as an en dash, as on EP's own pages.
+	 *
+	 * @param string $title     EP's `title`.
+	 * @param string $site_name EP's `site_name`.
+	 * @return string
 	 */
 	public static function title( string $title, string $site_name ): string {
 		$edition = '/\s+[-–—]\s+((?:Spring|Fall)\s+Edition)$/u';
@@ -227,11 +252,14 @@ class AFR_Summits {
 	}
 
 	/**
-	 * One summit from the API index, in the stored shape, or null when it has no
-	 * usable current edition. Missing values become '' rather than null.
+	 * One summit from the API index, in the stored shape. Missing values become ''
+	 * rather than null.
 	 *
 	 * `logo_url` is EP's white wordmark, for dark backgrounds. `date_text` and
 	 * `stats` stay empty: the API has no stats counters.
+	 *
+	 * @param array $item One entry of the index's `summits` list.
+	 * @return array|null Null when it has no usable current edition.
 	 */
 	public static function from_api( array $item ): ?array {
 		$edition = is_array( $item['current_edition'] ?? null ) ? $item['current_edition'] : [];
@@ -272,6 +300,7 @@ class AFR_Summits {
 	 * Refresh the index, then the editions the site reads, and record the outcome
 	 * for the admin notice. A dry run records nothing.
 	 *
+	 * @param bool $dry_run Fetch and map, store nothing.
 	 * @return array Same shape as refresh(), plus `editions` (code => edition result).
 	 */
 	public static function refresh_and_record( bool $dry_run = false ): array {
@@ -306,14 +335,20 @@ class AFR_Summits {
 		return $result;
 	}
 
-	/** The hourly run. */
+	/**
+	 * The hourly run.
+	 *
+	 * @return void
+	 */
 	public static function scheduled_refresh(): void {
 		self::refresh_and_record();
 	}
 
 	/**
-	 * Hourly, approximately: WP-Cron runs on site traffic. Cheap, because an
-	 * unchanged index or edition is a 304 with no body.
+	 * Schedule the refresh hourly, approximately: WP-Cron runs on site traffic.
+	 * Cheap, because an unchanged index or edition is a 304 with no body.
+	 *
+	 * @return void
 	 */
 	public static function schedule(): void {
 		if ( wp_next_scheduled( self::CRON ) && 'hourly' !== wp_get_schedule( self::CRON ) ) {
@@ -326,8 +361,10 @@ class AFR_Summits {
 	}
 
 	/**
-	 * Why the stored summits may be stale, or '' when all is well: the last refresh
-	 * failed, or nothing has refreshed for three days.
+	 * Why the stored summits may be stale: the last refresh failed, or nothing
+	 * has refreshed for three days.
+	 *
+	 * @return string The reason, or '' when all is well.
 	 */
 	public static function problem(): string {
 		$status = (array) get_option( self::STATUS_OPTION, [] );
@@ -351,6 +388,11 @@ class AFR_Summits {
 		return '';
 	}
 
+	/**
+	 * Show administrators a warning when the stored summits may be stale.
+	 *
+	 * @return void
+	 */
 	public static function admin_notice(): void {
 		$problem = current_user_can( 'manage_options' ) ? self::problem() : '';
 
@@ -364,16 +406,32 @@ class AFR_Summits {
 		}
 	}
 
+	/**
+	 * Whether a string is a 'Y-m-d' date.
+	 *
+	 * @param string $date The value to check.
+	 * @return bool
+	 */
 	public static function is_date( string $date ): bool {
 		return (bool) preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date );
 	}
 
-	/** A trimmed string, or '' for null and non-scalars. */
+	/**
+	 * A trimmed string.
+	 *
+	 * @param mixed $value Any value from the API.
+	 * @return string '' for null and non-scalars.
+	 */
 	public static function text( $value ): string {
 		return is_scalar( $value ) ? trim( (string) $value ) : '';
 	}
 
-	/** An https:// URL, or ''. */
+	/**
+	 * An https:// URL.
+	 *
+	 * @param mixed $value Any value from the API.
+	 * @return string '' unless it starts with https://.
+	 */
 	public static function https( $value ): string {
 		return is_string( $value ) && str_starts_with( $value, 'https://' ) ? $value : '';
 	}

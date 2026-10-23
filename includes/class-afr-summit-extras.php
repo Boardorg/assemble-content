@@ -28,6 +28,9 @@
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Assemble's own fields per summit, merged onto EP's facts.
+ */
 class AFR_Summit_Extras {
 
 	public const DEFAULTS = [
@@ -147,7 +150,9 @@ class AFR_Summit_Extras {
 	 * One summit with its extras merged in. `logo` and `image` become absolute
 	 * URLs, or ''. EP's facts win: an extra never replaces a key the importer filled.
 	 *
+	 * @param array      $summit A stored summit.
 	 * @param array|null $extras The map from all(), when merging many summits.
+	 * @return array
 	 */
 	public static function merge( array $summit, ?array $extras = null ): array {
 		$extras = $extras ?? self::all();
@@ -165,6 +170,9 @@ class AFR_Summit_Extras {
 	/**
 	 * A shared-library file's URL. Sites that serve the library elsewhere change
 	 * it with the `afr_summit_asset_url` filter.
+	 *
+	 * @param string $path Relative to wp-content/assets/.
+	 * @return string The URL, or '' for an empty path.
 	 */
 	public static function asset_url( string $path ): string {
 		if ( '' === $path ) {
