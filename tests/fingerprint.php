@@ -1,19 +1,19 @@
 <?php
 /**
  * Prints one hash per synced post: content, excerpt, date, slug, status, terms
- * and every `_afr_*` meta except sync timestamps. Run before and after a code
+ * and every `_ac_*` meta except sync timestamps. Run before and after a code
  * change plus `sync --all --force` to prove the mapping didn't change.
  *
  * wp eval-file wp-content/plugins/assemble-content/tests/fingerprint.php
  */
 
-foreach ( AFR_Types::post_types() as $post_type ) {
+foreach ( AC_Types::post_types() as $post_type ) {
 	$ids = get_posts( [ 'post_type' => $post_type, 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids', 'orderby' => 'ID', 'order' => 'ASC' ] );
 	foreach ( $ids as $id ) {
 		$post = get_post( $id );
 		$meta = array_filter(
 			get_post_meta( $id ),
-			static fn( $k ) => str_starts_with( $k, '_afr_' ) && ! in_array( $k, [ '_afr_synced_at' ], true ),
+			static fn( $k ) => str_starts_with( $k, '_ac_' ) && ! in_array( $k, [ '_ac_synced_at' ], true ),
 			ARRAY_FILTER_USE_KEY
 		);
 		ksort( $meta );
