@@ -5,11 +5,11 @@
  * layout at field-report-journey-aeo-technical-seo.html. Spectral carries the
  * display type, Inter carries everything else — never the reverse.
  *
- * Tokens are declared on .afr-doc rather than :root so the rest of the theme is
- * untouched. --afr-accent is set inline per report from its community.
+ * Tokens are declared on .ac-doc rather than :root so the rest of the theme is
+ * untouched. --ac-accent is set inline per report from its community.
  */
 
-.afr-doc {
+.ac-doc {
 	/* Neutrals from the 2026 Brand Identity Guidelines §2.5. These deliberately
 	   duplicate the theme's brand-tokens.css rather than inheriting it: reports
 	   must render correctly even when the plugin is used without the theme. */
@@ -47,7 +47,7 @@
 	/* Overridden inline per report from its primary community. Marketing teal
 	   is the fallback because every community in the model today is a marketing
 	   or social community. */
-	--afr-accent: #00575D;
+	--ac-accent: #00575D;
 
 	font-family: var(--font-body);
 	font-size: 1rem;
@@ -62,54 +62,54 @@
 	display: none;
 }
 
-.afr-doc *,
-.afr-doc *::before,
-.afr-doc *::after {
+.ac-doc *,
+.ac-doc *::before,
+.ac-doc *::after {
 	box-sizing: border-box;
 }
 
-.afr-doc h1,
-.afr-doc h2,
-.afr-doc h3,
-.afr-doc h4,
-.afr-doc h5,
-.afr-doc h6 {
+.ac-doc h1,
+.ac-doc h2,
+.ac-doc h3,
+.ac-doc h4,
+.ac-doc h5,
+.ac-doc h6 {
 	font-family: var(--font-display);
 	font-weight: var(--w-medium);
 	color: var(--ink-100);
 	margin: 0;
 }
 
-.afr-doc p {
+.ac-doc p {
 	font-family: var(--font-body);
 	max-width: var(--max-prose);
 	margin: 0 0 var(--s-4);
 	color: var(--ink-80);
 }
 
-.afr-doc strong,
-.afr-doc b {
+.ac-doc strong,
+.ac-doc b {
 	font-weight: var(--w-bold);
 	color: var(--ink-100);
 }
 
 /* ---------------------------------------------------------------- masthead */
 
-.afr-logo {
+.ac-logo {
 	height: 38px;
 	width: auto;
 	display: block;
 	margin-bottom: var(--s-5);
 }
 
-.afr-doc .afr-kicker {
+.ac-doc .ac-kicker {
 	font-family: var(--font-display);
 	font-style: italic;
 	color: var(--ink-60);
 	margin: 0 0 var(--s-5);
 }
 
-.afr-doc .afr-headline {
+.ac-doc .ac-headline {
 	font-size: clamp(1.6rem, 3vw, 2.3rem);
 	line-height: 1.16;
 	letter-spacing: -0.01em;
@@ -117,14 +117,14 @@
 	max-width: 32ch;
 }
 
-.afr-byline {
+.ac-byline {
 	display: flex;
 	align-items: center;
 	gap: var(--s-3);
 	margin: 0 0 var(--s-6);
 }
 
-.afr-byline-ava {
+.ac-byline-ava {
 	width: 40px;
 	height: 40px;
 	border-radius: 50%;
@@ -133,21 +133,21 @@
 	flex-shrink: 0;
 }
 
-.afr-byline-ava img {
+.ac-byline-ava img {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
 	display: block;
 }
 
-.afr-byline-name {
+.ac-byline-name {
 	display: block;
 	font-weight: var(--w-bold);
 	font-size: 0.9rem;
 	color: var(--ink-100);
 }
 
-.afr-byline-meta {
+.ac-byline-meta {
 	display: block;
 	font-size: 0.8rem;
 	color: var(--ink-60);
@@ -156,7 +156,7 @@
 /* ------------------------------------------------------- section labelling */
 
 /* The all-caps Inter label. Sections are labelled, not headlined. */
-.afr-doc .afr-sub {
+.ac-doc .ac-sub {
 	font-family: var(--font-body);
 	font-weight: var(--w-bold);
 	font-size: 0.95rem;
@@ -168,7 +168,7 @@
 }
 
 /* The authored subhead sits under the label in Spectral italic. */
-.afr-doc .afr-sub-italic {
+.ac-doc .ac-sub-italic {
 	font-family: var(--font-display);
 	font-style: italic;
 	font-size: 1.05rem;
@@ -178,30 +178,30 @@
 
 /* ------------------------------------------------- Story in Brief / quotes */
 
-.afr-doc .afr-lead-quote {
+.ac-doc .ac-lead-quote {
 	font-family: var(--font-display);
 	font-style: italic;
 	font-size: 1.3rem;
 	line-height: 1.4;
-	border-left: 3px solid var(--afr-accent);
+	border-left: 3px solid var(--ac-accent);
 	padding-left: var(--s-5);
 	margin: var(--s-5) 0;
 	color: var(--ink-100);
 	max-width: var(--max-prose);
 }
 
-.afr-quote-row {
+.ac-quote-row {
 	display: flex;
 	gap: var(--s-4);
 	align-items: flex-start;
 	margin: var(--s-5) 0;
 }
 
-.afr-quote-row .afr-lead-quote {
+.ac-quote-row .ac-lead-quote {
 	margin: 0;
 }
 
-.afr-qr-person {
+.ac-qr-person {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -211,7 +211,7 @@
 	margin: 0;
 }
 
-.afr-qr-ava {
+.ac-qr-ava {
 	width: 72px;
 	height: 72px;
 	border-radius: 50%;
@@ -220,18 +220,18 @@
 	flex-shrink: 0;
 }
 
-.afr-qr-ava img {
+.ac-qr-ava img {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
 	display: block;
 }
 
-.afr-qr-cap {
+.ac-qr-cap {
 	margin-top: var(--s-2);
 }
 
-.afr-qr-name {
+.ac-qr-name {
 	display: block;
 	font-family: var(--font-body);
 	font-weight: var(--w-bold);
@@ -240,7 +240,7 @@
 	line-height: 1.2;
 }
 
-.afr-qr-title {
+.ac-qr-title {
 	display: block;
 	font-size: 0.7rem;
 	color: var(--ink-60);
@@ -250,18 +250,18 @@
 
 /* ---------------------------------------------------------------- charts */
 
-.afr-charts {
+.ac-charts {
 	margin: var(--s-6) 0;
 }
 
-.afr-chart,
-.afr-figure {
+.ac-chart,
+.ac-figure {
 	margin: 0 0 var(--s-5);
 	max-width: var(--max-prose);
 }
 
-.afr-chart img,
-.afr-figure img {
+.ac-chart img,
+.ac-figure img {
 	max-width: 100%;
 	height: auto;
 	display: block;
@@ -269,8 +269,8 @@
 	border-radius: 6px;
 }
 
-.afr-chart figcaption,
-.afr-figure figcaption {
+.ac-chart figcaption,
+.ac-figure figcaption {
 	border-top: 1px solid var(--ink-10);
 	color: var(--ink-60);
 	font-size: 0.68rem;
@@ -282,25 +282,25 @@
 
 /* -------------------------------------------------------------- takeaways */
 
-.afr-takeaways,
-.afr-tk-short {
+.ac-takeaways,
+.ac-tk-short {
 	list-style: none;
 	padding: 0;
-	counter-reset: afrtk;
+	counter-reset: actk;
 	max-width: var(--max-prose);
 }
 
-.afr-takeaways {
+.ac-takeaways {
 	margin: var(--s-4) 0 0;
 }
 
-.afr-tk-short {
+.ac-tk-short {
 	margin: var(--s-3) 0 var(--s-6);
 }
 
-.afr-takeaways li,
-.afr-tk-short li {
-	counter-increment: afrtk;
+.ac-takeaways li,
+.ac-tk-short li {
+	counter-increment: actk;
 	position: relative;
 	padding: var(--s-3) 0 var(--s-3) var(--s-7);
 	border-bottom: 1px solid var(--ink-10);
@@ -308,40 +308,40 @@
 	margin: 0;
 }
 
-.afr-takeaways li::before,
-.afr-tk-short li::before {
-	content: counter(afrtk);
+.ac-takeaways li::before,
+.ac-tk-short li::before {
+	content: counter(actk);
 	position: absolute;
 	left: 0;
 	top: var(--s-3);
 	font-family: var(--font-display);
 	font-size: 1.3rem;
-	color: var(--afr-accent);
+	color: var(--ac-accent);
 	line-height: 1;
 }
 
-.afr-takeaways li b,
-.afr-takeaways li strong {
+.ac-takeaways li b,
+.ac-takeaways li strong {
 	color: var(--ink-100);
 }
 
-.afr-tk-short li {
+.ac-tk-short li {
 	font-weight: var(--w-semibold);
 	color: var(--ink-100);
 }
 
-.afr-tk-short li:last-child {
+.ac-tk-short li:last-child {
 	border-bottom: none;
 }
 
 /* ------------------------------------------------------------ boilerplate */
 
-.afr-doc .afr-boiler {
+.ac-doc .ac-boiler {
 	font-size: 0.92rem;
 	color: var(--ink-60);
 }
 
-.afr-author-card {
+.ac-author-card {
 	display: flex;
 	gap: var(--s-4);
 	align-items: flex-start;
@@ -349,7 +349,7 @@
 	max-width: var(--max-prose);
 }
 
-.afr-au-ava {
+.ac-au-ava {
 	width: 64px;
 	height: 64px;
 	border-radius: 50%;
@@ -358,18 +358,18 @@
 	flex-shrink: 0;
 }
 
-.afr-au-ava img {
+.ac-au-ava img {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
 	display: block;
 }
 
-.afr-author-card .afr-boiler {
+.ac-author-card .ac-boiler {
 	margin: 0;
 }
 
-.afr-community-logo {
+.ac-community-logo {
 	max-width: 180px;
 	height: auto;
 	margin-bottom: var(--s-4);
@@ -377,26 +377,26 @@
 
 /* -------------------------------------------- engagement footer per version */
 
-.afr-engage {
-	border-top: 3px solid var(--afr-accent);
+.ac-engage {
+	border-top: 3px solid var(--ac-accent);
 	margin-top: var(--s-8);
 	padding-top: var(--s-6);
 }
 
-.afr-doc .afr-engage-title {
+.ac-doc .ac-engage-title {
 	font-family: var(--font-display);
 	font-weight: var(--w-medium);
 	font-size: 1.5rem;
 	margin: 0 0 var(--s-5);
 }
 
-.afr-flow-list {
+.ac-flow-list {
 	list-style: none;
 	margin: var(--s-4) 0 0;
 	padding: 0;
 }
 
-.afr-flow-list > li {
+.ac-flow-list > li {
 	display: grid;
 	grid-template-columns: auto 1fr;
 	gap: var(--s-4);
@@ -406,29 +406,29 @@
 	margin: 0;
 }
 
-.afr-flow-list > li:first-child {
+.ac-flow-list > li:first-child {
 	padding-top: var(--s-2);
 }
 
-.afr-flow-list > li:last-child {
+.ac-flow-list > li:last-child {
 	border-bottom: none;
 	padding-bottom: 0;
 }
 
-.afr-fl-mark {
+.ac-fl-mark {
 	width: 40px;
 	height: 40px;
 	border-radius: 50%;
-	border: 1px solid var(--afr-accent);
+	border: 1px solid var(--ac-accent);
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--afr-accent);
+	color: var(--ac-accent);
 	font-size: 1rem;
 }
 
-.afr-flow-list h6 {
+.ac-flow-list h6 {
 	font-family: var(--font-body);
 	margin: 0 0 var(--s-2);
 	font-size: 1rem;
@@ -436,20 +436,20 @@
 	color: var(--ink-100);
 }
 
-.afr-fl-body p {
+.ac-fl-body p {
 	margin: 0;
 	font-size: 0.88rem;
 	color: var(--ink-80);
 	max-width: none;
 }
 
-.afr-fl-links {
+.ac-fl-links {
 	list-style: none;
 	margin: var(--s-3) 0 0;
 	padding: 0;
 }
 
-.afr-fl-links li {
+.ac-fl-links li {
 	display: flex;
 	justify-content: space-between;
 	gap: var(--s-4);
@@ -459,31 +459,31 @@
 	margin: 0;
 }
 
-.afr-fl-links li:last-child {
+.ac-fl-links li:last-child {
 	border-bottom: none;
 	padding-bottom: 0;
 }
 
-.afr-fl-links a {
+.ac-fl-links a {
 	color: var(--ink-100);
 	text-decoration: none;
 	font-weight: var(--w-semibold);
 	font-size: 0.88rem;
-	border-bottom: 1px solid var(--afr-accent);
+	border-bottom: 1px solid var(--ac-accent);
 	padding-bottom: 1px;
 }
 
-.afr-fl-links a:hover {
-	color: var(--afr-accent);
+.ac-fl-links a:hover {
+	color: var(--ac-accent);
 }
 
-.afr-fl-links .afr-when {
+.ac-fl-links .ac-when {
 	font-size: 0.74rem;
 	color: var(--ink-60);
 	white-space: nowrap;
 }
 
-.afr-fl-actions {
+.ac-fl-actions {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--s-2);
@@ -492,8 +492,8 @@
 
 /* ----------------------------------------------------------------- buttons */
 
-.afr-btn,
-.afr-btn-sm {
+.ac-btn,
+.ac-btn-sm {
 	display: inline-block;
 	font-family: var(--font-body);
 	font-weight: var(--w-bold);
@@ -503,7 +503,7 @@
 	text-decoration: none;
 }
 
-.afr-btn {
+.ac-btn {
 	font-size: 0.82rem;
 	padding: var(--s-4) var(--s-6);
 	background: var(--ink-100);
@@ -511,41 +511,41 @@
 	border: 1px solid var(--ink-100);
 }
 
-.afr-btn:hover {
+.ac-btn:hover {
 	background: var(--ink-80);
 	color: var(--white);
 }
 
-.afr-btn-sm {
+.ac-btn-sm {
 	font-size: 0.74rem;
 	padding: var(--s-3) var(--s-4);
 }
 
-.afr-btn-sm.afr-solid {
+.ac-btn-sm.ac-solid {
 	background: var(--ink-100);
 	color: var(--white);
 	border: 1px solid var(--ink-100);
 }
 
-.afr-btn-sm.afr-solid:hover {
+.ac-btn-sm.ac-solid:hover {
 	background: var(--ink-80);
 	color: var(--white);
 }
 
-.afr-btn-sm.afr-ghost {
+.ac-btn-sm.ac-ghost {
 	background: transparent;
 	color: var(--ink-100);
 	border: 1px solid var(--ink-100);
 }
 
-.afr-btn-sm.afr-ghost:hover {
+.ac-btn-sm.ac-ghost:hover {
 	background: var(--ink-100);
 	color: var(--white);
 }
 
 /* -------------------------------------------------------------------- gate */
 
-.afr-gate {
+.ac-gate {
 	border: 1px dashed var(--ink-20);
 	background: var(--paper);
 	padding: var(--s-6);
@@ -554,7 +554,7 @@
 	max-width: var(--max-prose);
 }
 
-.afr-doc .afr-gate-lock {
+.ac-doc .ac-gate-lock {
 	font-size: 0.72rem;
 	font-weight: var(--w-bold);
 	letter-spacing: 0.08em;
@@ -564,7 +564,7 @@
 	max-width: none;
 }
 
-.afr-doc .afr-gate-title {
+.ac-doc .ac-gate-title {
 	font-family: var(--font-display);
 	font-size: 1.5rem;
 	line-height: 1.25;
@@ -572,19 +572,19 @@
 }
 
 /* Delegate: reads the report, peer access stays locked. */
-.afr-gated-block {
+.ac-gated-block {
 	position: relative;
 	margin: var(--s-5) 0;
 }
 
-.afr-gated-block > :first-child {
+.ac-gated-block > :first-child {
 	filter: blur(3px);
 	opacity: 0.5;
 	pointer-events: none;
 	user-select: none;
 }
 
-.afr-gate-overlay {
+.ac-gate-overlay {
 	position: absolute;
 	inset: 0;
 	display: flex;
@@ -597,25 +597,25 @@
 	background: rgba(255, 255, 255, 0.74);
 }
 
-.afr-go-badge {
+.ac-go-badge {
 	font-weight: var(--w-bold);
 	font-size: 0.66rem;
 	letter-spacing: 0.1em;
 	text-transform: uppercase;
-	color: var(--afr-accent);
-	border: 1px solid var(--afr-accent);
+	color: var(--ac-accent);
+	border: 1px solid var(--ac-accent);
 	padding: 3px 10px;
 	border-radius: var(--r-sm);
 }
 
-.afr-go-title {
+.ac-go-title {
 	font-family: var(--font-display);
 	font-size: 1.3rem;
 	color: var(--ink-100);
 	line-height: 1.2;
 }
 
-.afr-go-sub {
+.ac-go-sub {
 	font-size: 0.88rem;
 	color: var(--ink-60);
 	max-width: 44ch;
@@ -624,22 +624,22 @@
 
 /* --------------------------------------------------- Council: summary first */
 
-.afr-same-note {
+.ac-same-note {
 	font-size: 0.82rem;
 	color: var(--ink-60);
 	background: var(--ink-05);
-	border-left: 3px solid var(--afr-accent);
+	border-left: 3px solid var(--ac-accent);
 	padding: var(--s-3) var(--s-4);
 	margin-bottom: var(--s-5);
 	max-width: var(--max-prose);
 }
 
 /* <details> so the full report is reachable without JavaScript. */
-.afr-expand {
+.ac-expand {
 	margin: var(--s-5) 0 0;
 }
 
-.afr-expand > summary {
+.ac-expand > summary {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--s-2);
@@ -657,35 +657,35 @@
 	list-style: none;
 }
 
-.afr-expand > summary::-webkit-details-marker {
+.ac-expand > summary::-webkit-details-marker {
 	display: none;
 }
 
-.afr-expand > summary::after {
+.ac-expand > summary::after {
 	content: "\2193";
 	font-size: 0.9rem;
 }
 
-.afr-expand[open] > summary::after {
+.ac-expand[open] > summary::after {
 	content: "\2191";
 }
 
-.afr-expand > summary:hover {
+.ac-expand > summary:hover {
 	background: var(--ink-80);
 }
 
-.afr-expand[open] > summary {
+.ac-expand[open] > summary {
 	margin-bottom: var(--s-6);
 }
 
-.afr-expand-body {
+.ac-expand-body {
 	border-top: 1px solid var(--ink-10);
 	padding-top: var(--s-6);
 }
 
 /* --------------------------------------------------------------- colophon */
 
-.afr-colophon {
+.ac-colophon {
 	background: var(--black);
 	color: var(--white);
 	padding: var(--s-6);
@@ -696,33 +696,33 @@
 	flex-wrap: wrap;
 }
 
-.afr-colophon .afr-assemble-mark {
+.ac-colophon .ac-assemble-mark {
 	height: 26px;
 	width: auto;
 	color: var(--white);
 }
 
-.afr-colophon .afr-assemble-mark svg {
+.ac-colophon .ac-assemble-mark svg {
 	height: 100%;
 	width: auto;
 	display: block;
 	fill: currentColor;
 }
 
-.afr-colophon .afr-fam-sep {
+.ac-colophon .ac-fam-sep {
 	width: 1px;
 	height: 34px;
 	background: rgba(255, 255, 255, 0.22);
 }
 
-.afr-colophon .afr-fam-mark {
+.ac-colophon .ac-fam-mark {
 	height: 40px;
 	width: auto;
 }
 
 /* ------------------------------------------------- beta bypass banner */
 
-.afr-bypass-banner {
+.ac-bypass-banner {
 	font-family: var(--font-body);
 	display: flex;
 	align-items: baseline;
@@ -731,13 +731,13 @@
 	margin-bottom: var(--s-6);
 	padding: var(--s-3) var(--s-4);
 	background: var(--ink-05);
-	border-left: 3px solid var(--afr-accent);
+	border-left: 3px solid var(--ac-accent);
 	font-size: 0.84rem;
 	line-height: 1.5;
 	color: var(--ink-80);
 }
 
-.afr-bypass-badge {
+.ac-bypass-badge {
 	font-weight: var(--w-bold);
 	font-size: 0.66rem;
 	letter-spacing: 0.1em;
@@ -750,38 +750,38 @@
 	white-space: nowrap;
 }
 
-.afr-bypass-text {
+.ac-bypass-text {
 	flex: 1 1 20rem;
 }
 
-.afr-bypass-off,
-.afr-doc .afr-gate-note {
+.ac-bypass-off,
+.ac-doc .ac-gate-note {
 	font-size: 0.78rem;
 	color: var(--ink-60);
 }
 
-.afr-bypass-off {
+.ac-bypass-off {
 	white-space: nowrap;
 }
 
-.afr-doc .afr-gate-note {
+.ac-doc .ac-gate-note {
 	margin: var(--s-3) 0 0;
 	max-width: none;
 }
 
 /* Secondary to the primary action next to it. */
-.afr-btn--bypass {
+.ac-btn--bypass {
 	background: transparent;
 	color: var(--ink-100);
 	border: 1px solid var(--ink-100);
 }
 
-.afr-btn--bypass:hover {
+.ac-btn--bypass:hover {
 	background: var(--ink-100);
 	color: var(--white);
 }
 
-.afr-gate-actions {
+.ac-gate-actions {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--s-3);
@@ -791,7 +791,7 @@
 
 /* ------------------------------------------------------ admin preview bar */
 
-.afr-preview-bar {
+.ac-preview-bar {
 	font-family: var(--font-body);
 	margin-bottom: var(--s-6);
 	padding: var(--s-3) var(--s-4);
@@ -803,7 +803,7 @@
 	color: #2B2B2B;
 }
 
-.afr-preview-label {
+.ac-preview-label {
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
@@ -812,27 +812,27 @@
 	margin-right: var(--s-2);
 }
 
-.afr-preview-bar a {
+.ac-preview-bar a {
 	color: #0C0C0C;
 	text-decoration: none;
 	border-bottom: 1px solid transparent;
 }
 
-.afr-preview-bar a:hover {
+.ac-preview-bar a:hover {
 	border-bottom-color: currentColor;
 }
 
-.afr-preview-bar a.afr-active {
+.ac-preview-bar a.ac-active {
 	font-weight: 700;
 	border-bottom: 2px solid currentColor;
 }
 
-.afr-preview-bar .afr-sep {
+.ac-preview-bar .ac-sep {
 	opacity: 0.3;
 	margin: 0 0.15em;
 }
 
-.afr-preview-note {
+.ac-preview-note {
 	display: block;
 	margin-top: var(--s-1);
 	color: #545454;
@@ -842,11 +842,11 @@
 
 /* ---------------------------------------------------------------- teasers */
 
-.afr-teaser {
+.ac-teaser {
 	font-family: var(--font-body);
 }
 
-.afr-teaser-note {
+.ac-teaser-note {
 	font-size: 0.9rem;
 	color: #545454;
 }
@@ -854,12 +854,12 @@
 /* ------------------------------------------------------------ responsive */
 
 @media (max-width: 720px) {
-	.afr-quote-row {
+	.ac-quote-row {
 		flex-direction: column;
 		align-items: flex-start;
 	}
 
-	.afr-qr-person {
+	.ac-qr-person {
 		flex-direction: row;
 		width: auto;
 		text-align: left;
@@ -867,12 +867,12 @@
 		align-items: center;
 	}
 
-	.afr-qr-ava {
+	.ac-qr-ava {
 		width: 48px;
 		height: 48px;
 	}
 
-	.afr-colophon {
+	.ac-colophon {
 		gap: var(--s-4);
 	}
 }

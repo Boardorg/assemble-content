@@ -14,13 +14,13 @@ import { createClient } from 'contentful-management'
 const spaceId = process.env.CONTENTFUL_SPACE_ID
 const environmentId = process.env.CONTENTFUL_ENVIRONMENT
 const accessToken = process.env.CONTENTFUL_MANAGEMENT_TOKEN
-const secret = process.env.AFR_WEBHOOK_SECRET
+const secret = process.env.AC_WEBHOOK_SECRET || process.env.AFR_WEBHOOK_SECRET
 const url = process.env.WP_BETA_WEBHOOK_URL
 
 const NAME = 'WordPress Beta (assemblebeta)'
 
 if (!spaceId || !accessToken || !environmentId) throw new Error('Missing CONTENTFUL_* vars in .env')
-if (!secret) throw new Error('Missing AFR_WEBHOOK_SECRET in .env')
+if (!secret) throw new Error('Missing AC_WEBHOOK_SECRET in .env')
 if (!url) throw new Error('Missing WP_BETA_WEBHOOK_URL in .env')
 if (environmentId === 'master') throw new Error('CONTENTFUL_ENVIRONMENT is master — refusing to run.')
 
@@ -45,7 +45,7 @@ const definition = {
   ],
   // Only this environment; master must never reach the beta.
   filters: [{ equals: [{ doc: 'sys.environment.sys.id' }, environmentId] }],
-  headers: [{ key: 'X-AFR-Secret', value: secret, secret: true }],
+  headers: [{ key: 'X-AC-Secret', value: secret, secret: true }],
   active: true,
 }
 
@@ -69,4 +69,4 @@ console.log(`url:         ${hook.url}`)
 console.log(`active:      ${hook.active}`)
 console.log(`topics:      ${hook.topics.join(', ')}`)
 console.log(`environment: filtered to ${environmentId}`)
-console.log(`secret hdr:  X-AFR-Secret (stored secret, not readable back)`)
+console.log(`secret hdr:  X-AC-Secret (stored secret, not readable back)`)

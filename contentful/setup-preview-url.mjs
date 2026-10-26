@@ -1,6 +1,6 @@
 // Registers (or updates) a Contentful "Content preview" platform that opens
 // Field Reports in a WordPress site's draft preview (assemble-content 1.4.0+):
-//   <site>/?afr_preview={entry.sys.id}
+//   <site>/?ac_preview={entry.sys.id}
 //
 // Space-level setting; it changes no entries. Idempotent: matched by name.
 //
@@ -37,7 +37,7 @@ async function call(url, options = {}) {
 	return body;
 }
 
-const url = `${target.site}/?afr_preview={entry.sys.id}`;
+const url = `${target.site}/?ac_preview={entry.sys.id}`;
 const wanted = {
 	name: target.name,
 	description: 'Opens the latest draft on the WordPress site (admins, or a share link from the preview page).',
