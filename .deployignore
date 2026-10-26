@@ -1,10 +1,10 @@
 README.md
-docs/
+/docs/
 .github/
-contentful/
+/contentful/
 node_modules/
 vendor/
-tests/
+/tests/
 composer.json
 composer.lock
 phpcs.xml.dist
