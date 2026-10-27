@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Assemble Content
  * Description:       The Assemble Content feed. Syncs published content into hidden, gated post types and cached lists: Field Reports, playbooks, communities and Site Features from Contentful, and summits from Executive Platforms' summit API. Webhook-driven, with WP-CLI commands and per-audience rendering.
- * Version:           2.0.0
+ * Version:           2.0.1
  * Requires PHP:      8.0
  * Author:            Assemble
  * Text Domain:       assemble-content
@@ -20,7 +20,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'AC_VERSION', '2.0.0' );
+define( 'AC_VERSION', '2.0.1' );
 define( 'AC_FILE', __FILE__ );
 define( 'AC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AC_URL', plugin_dir_url( __FILE__ ) );
