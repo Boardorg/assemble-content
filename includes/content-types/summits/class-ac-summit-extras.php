@@ -54,11 +54,11 @@ class AC_Summit_Extras {
 	 * @return array<string,array>
 	 */
 	public static function all(): array {
-		$human_capital = [ 'area' => 'human-resources', 'area_label' => __( 'Human Capital', 'assemble-content' ) ];
+		$human_capital = [ 'area' => 'human-resources', 'area_label' => __( 'Human Resources', 'assemble-content' ) ];
 		$supply_chain  = [ 'area' => 'manufacturing', 'area_label' => __( 'Supply Chain', 'assemble-content' ) ];
 		$manufacturing = [ 'area' => 'manufacturing', 'area_label' => __( 'Manufacturing & Safety', 'assemble-content' ) ];
-		$marketing     = [ 'area' => 'marketing', 'area_label' => __( 'Marketing & Comms', 'assemble-content' ) ];
-		$finance       = [ 'area' => 'finance', 'area_label' => __( 'Finance', 'assemble-content' ) ];
+		$marketing     = [ 'area' => 'marketing', 'area_label' => __( 'Marketing and Communications', 'assemble-content' ) ];
+		$finance       = [ 'area' => 'finance', 'area_label' => __( 'Finance and Legal', 'assemble-content' ) ];
 		$life_sciences = [ 'area' => '', 'area_label' => __( 'Life Sciences', 'assemble-content' ) ];
 
 		$extras = [

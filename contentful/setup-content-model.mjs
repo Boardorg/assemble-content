@@ -133,7 +133,7 @@ const contentTypes = [
       ],
     },
     controls: [
-      { fieldId: 'practiceArea', widgetId: 'dropdown', settings: { helpText: 'The Assemble practice this community belongs to. Same keys as the Member Center Network practice_area and the website’s data-area: human-resources (HR), marketing, manufacturing (Supply Chain & Manufacturing), technology (Data & Technology), finance.' } },
+      { fieldId: 'practiceArea', widgetId: 'dropdown', settings: { helpText: 'The Assemble practice this community belongs to. Same keys as the Member Center Network practice_area and the website’s data-area: human-resources (Human Resources), manufacturing (Supply Chain & Manufacturing), marketing (Marketing and Communications), technology (Data and Technology), finance (Finance and Legal).' } },
       { fieldId: 'memberCenterGroups', widgetId: 'tagEditor', settings: { helpText: 'The Member Center BuddyPress group slug(s) for this community, e.g. learning-development. ESG uses two (esg-csr, esg-csr-sustainability). Leave blank for councils that have no Member Center group.' } },
     ],
   },
