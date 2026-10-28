@@ -5,8 +5,8 @@
  *   so re-running updates the same entries rather than creating more.
  * - Topics are looked up by their slug and must already exist; a missing one is
  *   reported and skipped.
- * - Library images are fetched from their URLs; transcript PDFs are uploaded from
- *   the folder given as the second argument.
+ * - Library images are fetched from their URLs, or uploaded from a local `file`;
+ *   transcript PDFs are uploaded from the folder given as the second argument.
  * - Entries are left as drafts unless --publish is passed, so an editor can check
  *   them in Contentful first.
  *
@@ -16,7 +16,7 @@
  */
 import 'dotenv/config'
 import { readFileSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { createClient } from 'contentful-management'
 
 const spaceId = process.env.CONTENTFUL_SPACE_ID
@@ -102,6 +102,18 @@ async function uploadPdf(fileName) {
   return upsertAsset(fileName, '', { contentType: 'application/pdf', fileName: basename(fileName), uploadFrom: link(upload.sys.id, 'Upload') })
 }
 
+// A library image is fetched from its `url`, or uploaded from `file` (a path relative to the seed file).
+async function libraryImage(image) {
+  if (image?.file) {
+    const upload = await client.upload.create({}, { file: readFileSync(join(dirname(seedPath), image.file)) })
+    return upsertAsset(image.title, image.description, { contentType: 'image/jpeg', fileName: basename(image.file), uploadFrom: link(upload.sys.id, 'Upload') })
+  }
+  if (image?.url) {
+    return upsertAsset(image.title, image.description, { contentType: 'image/jpeg', fileName: basename(new URL(image.url).pathname), upload: image.url })
+  }
+  return null
+}
+
 const topicIds = new Map()
 async function topicLinks(slugs) {
   const links = []
@@ -122,9 +134,7 @@ const libraries = seed.libraries ?? [seed.library]
 const libraryIds = new Map()
 
 for (const lib of libraries) {
-  const image = lib.image?.url
-    ? await upsertAsset(lib.image.title, lib.image.description, { contentType: 'image/jpeg', fileName: basename(new URL(lib.image.url).pathname), upload: lib.image.url })
-    : null
+  const image = await libraryImage(lib.image)
 
   const library = await upsertEntry('summitLibrary', 'slug', lib.slug, {
     name: lib.name,
