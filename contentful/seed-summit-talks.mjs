@@ -1,16 +1,17 @@
 /**
- * Seeds one Summit library and its talks from a JSON file.
+ * Seeds Summit libraries and their talks from a JSON file.
  *
- * - The library, each talk and each speaker (a Person) are matched on slug or name,
+ * - Each library, talk, speaker and author (a Person) is matched on slug or name,
  *   so re-running updates the same entries rather than creating more.
  * - Topics are looked up by their slug and must already exist; a missing one is
  *   reported and skipped.
- * - The library image is fetched from its URL; transcript PDFs are uploaded from
+ * - Library images are fetched from their URLs; transcript PDFs are uploaded from
  *   the folder given as the second argument.
  * - Entries are left as drafts unless --publish is passed, so an editor can check
  *   them in Contentful first.
  *
  * Usage: node contentful/seed-summit-talks.mjs <seed.json> <pdf-folder> [--publish]
+ * The pdf folder is only read for talks that name a transcriptPdf.
  * Reads CONTENTFUL_SPACE_ID, CONTENTFUL_MANAGEMENT_TOKEN, CONTENTFUL_ENVIRONMENT from .env
  */
 import 'dotenv/config'
@@ -116,48 +117,65 @@ async function topicLinks(slugs) {
 // ---------- run ----------
 console.log(`Space: ${spaceId}  Environment: ${environmentId}  ${publish ? 'publishing' : 'drafts only'}\n`)
 
-const lib = seed.library
-const image = lib.image?.url
-  ? await upsertAsset(lib.image.title, lib.image.description, { contentType: 'image/jpeg', fileName: basename(new URL(lib.image.url).pathname), upload: lib.image.url })
-  : null
+// Older seed files carry one `library`; newer ones a `libraries` list and a `library` slug per talk.
+const libraries = seed.libraries ?? [seed.library]
+const libraryIds = new Map()
 
-const library = await upsertEntry('summitLibrary', 'slug', lib.slug, {
-  name: lib.name,
-  slug: lib.slug,
-  edition: lib.edition,
-  city: lib.city,
-  startDate: lib.startDate,
-  endDate: lib.endDate,
-  description: lib.description,
-  image: image ? link(image.sys.id, 'Asset') : null,
-})
+for (const lib of libraries) {
+  const image = lib.image?.url
+    ? await upsertAsset(lib.image.title, lib.image.description, { contentType: 'image/jpeg', fileName: basename(new URL(lib.image.url).pathname), upload: lib.image.url })
+    : null
+
+  const library = await upsertEntry('summitLibrary', 'slug', lib.slug, {
+    name: lib.name,
+    slug: lib.slug,
+    edition: lib.edition,
+    city: lib.city,
+    startDate: lib.startDate,
+    endDate: lib.endDate,
+    description: lib.description,
+    image: image ? link(image.sys.id, 'Asset') : null,
+  })
+  libraryIds.set(lib.slug, library.sys.id)
+}
 
 for (const talk of seed.talks) {
+  const libraryId = libraryIds.get(talk.library ?? libraries[0].slug)
+  if (!libraryId) {
+    console.warn(`  ${talk.slug}: library "${talk.library}" is not in this file; skipped`)
+    continue
+  }
+
   const speakers = []
   for (const person of talk.speakers) {
     speakers.push(link((await upsertEntry('person', 'name', person.name, person)).sys.id))
   }
 
+  const author = talk.author ? await upsertEntry('person', 'name', talk.author.name, talk.author) : null
   const pdf = talk.transcriptPdf ? await uploadPdf(talk.transcriptPdf) : null
 
   await upsertEntry('summitTalk', 'slug', talk.slug, {
     title: talk.title,
+    originalTitle: talk.originalTitle,
     slug: talk.slug,
-    summit: link(library.sys.id),
+    summit: link(libraryId),
     organization: talk.organization,
     dek: talk.dek,
     sessionStart: talk.sessionStart,
     topics: await topicLinks(talk.topics),
     speakers,
-    publishTo: seed.publishTo,
-    availableTo: seed.availableTo,
+    speakerNote: talk.speakerNote,
+    author: author ? link(author.sys.id) : null,
+    publishTo: talk.publishTo ?? seed.publishTo,
+    availableTo: talk.availableTo ?? seed.availableTo,
     topRated: talk.topRated,
     videoUrl: talk.videoUrl,
-    overview: talk.overview,
-    keyPoints: talk.keyPoints,
+    brief: talk.brief,
+    keyTakeaways: talk.keyTakeaways,
+    fullStory: talk.fullStory,
     transcript: talk.transcript,
     transcriptPdf: pdf ? link(pdf.sys.id, 'Asset') : null,
   })
 }
 
-console.log(`\nDone: 1 library, ${seed.talks.length} talks${publish ? ', published' : ' as drafts'}.`)
+console.log(`\nDone: ${libraries.length} libraries, ${seed.talks.length} talks${publish ? ', published' : ' as drafts'}.`)
