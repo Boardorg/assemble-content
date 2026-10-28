@@ -168,7 +168,6 @@ for (const talk of seed.talks) {
     author: author ? link(author.sys.id) : null,
     publishTo: talk.publishTo ?? seed.publishTo,
     availableTo: talk.availableTo ?? seed.availableTo,
-    topRated: talk.topRated,
     videoUrl: talk.videoUrl,
     brief: talk.brief,
     keyTakeaways: talk.keyTakeaways,
