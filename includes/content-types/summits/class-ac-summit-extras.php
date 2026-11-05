@@ -5,8 +5,7 @@
  * EP holds the summit facts (title, dates, place, links). These are Assemble's
  * own choices that EP doesn't keep:
  *
- *   - area:          the practice-area key that colours the summit ('' is neutral;
- *                    Life Sciences has no colour ramp);
+ *   - area:          the practice-area key that colours the summit ('' is neutral);
  *   - area_label:    the eyebrow, in EP's practice areas ("Manufacturing & Safety");
  *   - communities:   Community slugs (the community directory) the summit is
  *                    featured under; ['*'] means every Community in its area;
@@ -59,7 +58,6 @@ class AC_Summit_Extras {
 		$manufacturing = [ 'area' => 'manufacturing', 'area_label' => __( 'Manufacturing & Safety', 'assemble-content' ) ];
 		$marketing     = [ 'area' => 'marketing', 'area_label' => __( 'Marketing and Communications', 'assemble-content' ) ];
 		$finance       = [ 'area' => 'finance', 'area_label' => __( 'Finance and Legal', 'assemble-content' ) ];
-		$life_sciences = [ 'area' => '', 'area_label' => __( 'Life Sciences', 'assemble-content' ) ];
 
 		$extras = [
 			'nasces'  => $supply_chain + [
@@ -117,17 +115,17 @@ class AC_Summit_Extras {
 				'blurb'       => __( 'Enterprise learning, leadership development, and workforce readiness.', 'assemble-content' ),
 				'logo'        => 'summits/nales-wordmark-color.png',
 			],
-			'bmws'    => $life_sciences + [
+			'bmws'    => $manufacturing + [
 				'communities' => [],
 				'blurb'       => __( 'Biomanufacturing operations, quality, capacity, and next-generation production.', 'assemble-content' ),
 				'logo'        => 'summits/bmws-wordmark-color.png',
 			],
-			'mdws'    => $life_sciences + [
+			'mdws'    => $manufacturing + [
 				'communities' => [],
 				'blurb'       => __( 'Medical device quality, operations, supply chain, regulatory, and innovation leaders.', 'assemble-content' ),
 				'logo'        => 'summits/mdws-wordmark-color.png',
 			],
-			'pmws'    => $life_sciences + [
+			'pmws'    => $manufacturing + [
 				'communities' => [],
 				'blurb'       => __( 'Pharma manufacturing, quality, technology transfer, and operational readiness.', 'assemble-content' ),
 				'logo'        => 'summits/pmws-wordmark-color.png',
