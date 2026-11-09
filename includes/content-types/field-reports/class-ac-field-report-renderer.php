@@ -42,17 +42,17 @@ class AC_Field_Report_Renderer {
 	 * shown is listed here, and nowhere else.
 	 *
 	 * Every view gets the report's identity (headline, community, topics, date,
-	 * teaser, featured image), which listings and feeds already show to anyone. The body sections
+	 * teaser, featured image and its caption), which listings and feeds already show to anyone. The body sections
 	 * (story_in_brief … author) are members only. The public view gets an
 	 * attribution line, the opening paragraphs and the join prompt; the denied
 	 * view gets the source line and the gate.
 	 */
 	private const VIEW_SECTIONS = [
-		AC_Audience::VIEW_STANDARD => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'source_line', 'byline', 'story_in_brief', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'community', 'author', 'engagement' ],
-		AC_Audience::VIEW_DELEGATE => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'source_line', 'byline', 'note', 'story_in_brief', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'community', 'author', 'engagement' ],
-		AC_Audience::VIEW_COUNCIL  => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'source_line', 'byline', 'note', 'story_in_brief', 'glance', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'community', 'author', 'engagement' ],
-		AC_Audience::VIEW_PUBLIC   => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'attribution', 'setup', 'join' ],
-		AC_Audience::VIEW_DENIED   => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'source_line', 'gate' ],
+		AC_Audience::VIEW_STANDARD => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'image_note', 'source_line', 'byline', 'story_in_brief', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'community', 'author', 'engagement' ],
+		AC_Audience::VIEW_DELEGATE => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'image_note', 'source_line', 'byline', 'note', 'story_in_brief', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'community', 'author', 'engagement' ],
+		AC_Audience::VIEW_COUNCIL  => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'image_note', 'source_line', 'byline', 'note', 'story_in_brief', 'glance', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'community', 'author', 'engagement' ],
+		AC_Audience::VIEW_PUBLIC   => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'image_note', 'attribution', 'setup', 'join' ],
+		AC_Audience::VIEW_DENIED   => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'image_note', 'source_line', 'gate' ],
 	];
 
 	/**
@@ -166,6 +166,8 @@ class AC_Field_Report_Renderer {
 	 *   dek            string (newsletterSetup, else the first 40 words of Picking Up)
 	 *   date           { timestamp, iso, display, month }
 	 *   image          asset (featuredImage)
+	 *   image_note     { caption, credit } (featuredImageCaption, featuredImageCredit;
+	 *                  either may be ''; left out when both are, or with no image)
 	 *   source_line    string
 	 *   attribution    string (public view's kicker, instead of the source line)
 	 *   byline         person
@@ -303,6 +305,7 @@ class AC_Field_Report_Renderer {
 			'dek'            => self::dek( $entry ),
 			'date'           => self::date_data( $entry ),
 			'image'          => self::featured_image( $entry ),
+			'image_note'     => self::image_note( $entry ),
 			'source_line'    => trim( (string) ( AC_Contentful::field( $entry, 'sourceLine' ) ?? '' ) ),
 			'attribution'    => self::attribution( $entry ),
 			'byline'         => self::person( AC_Contentful::field( $entry, 'author' ) ),
@@ -391,6 +394,24 @@ class AC_Field_Report_Renderer {
 		$asset = AC_Contentful::field( $entry, 'featuredImage' );
 
 		return is_array( $asset ) && AC_Contentful::asset_url( $asset ) !== '' ? $asset : null;
+	}
+
+	/**
+	 * The featured image's caption ("About this photo") and source credit, written
+	 * per report because one photo carries different captions on different reports.
+	 * Null without an image or when both are blank (our own charts and images).
+	 */
+	private static function image_note( array $entry ): ?array {
+		if ( ! self::featured_image( $entry ) ) {
+			return null;
+		}
+
+		$note = [
+			'caption' => trim( (string) ( AC_Contentful::field( $entry, 'featuredImageCaption' ) ?? '' ) ),
+			'credit'  => trim( (string) ( AC_Contentful::field( $entry, 'featuredImageCredit' ) ?? '' ) ),
+		];
+
+		return '' === $note['caption'] && '' === $note['credit'] ? null : $note;
 	}
 
 	private static function date_data( array $entry ): ?array {
