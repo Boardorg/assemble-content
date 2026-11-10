@@ -201,7 +201,7 @@ class AC_Playbook_Renderer {
 	public static function dek( array $entry ): string {
 		$dek = trim( (string) ( AC_Contentful::field( $entry, 'dek' ) ?? '' ) );
 
-		return $dek !== '' ? $dek : wp_trim_words( AC_RichText::to_text( AC_Contentful::field( $entry, 'body' ) ), 40 );
+		return $dek !== '' ? $dek : AC_Field_Report_Renderer::whole_sentences( AC_RichText::to_text( AC_Contentful::field( $entry, 'body' ) ), 45 );
 	}
 
 	private static function featured_image( array $entry ): ?array {
