@@ -386,7 +386,31 @@ class AC_Field_Report_Renderer {
 	private static function dek( array $entry ): string {
 		$setup = trim( (string) ( AC_Contentful::field( $entry, 'newsletterSetup' ) ?? '' ) );
 
-		return $setup !== '' ? $setup : wp_trim_words( AC_RichText::to_text( AC_Contentful::field( $entry, 'pickingUpBody' ) ), 40 );
+		return $setup !== '' ? $setup : self::whole_sentences( AC_RichText::to_text( AC_Contentful::field( $entry, 'pickingUpBody' ) ), 45 );
+	}
+
+	/**
+	 * The opening of a text in whole sentences, about $words long: every sentence
+	 * that fits, and always at least the first, so a summary never stops
+	 * mid-thought with an ellipsis (Kristen's review, 2026-11-09).
+	 */
+	public static function whole_sentences( string $text, int $words ): string {
+		$text = trim( (string) preg_replace( '/\s+/', ' ', $text ) );
+		if ( '' === $text ) {
+			return '';
+		}
+
+		$sentences = preg_split( '/(?:(?<=[.!?])|(?<=[.!?][”"’)]))\s+(?=[“"‘(]?[A-Z0-9])/u', $text ) ?: [ $text ];
+		$out       = '';
+		foreach ( $sentences as $sentence ) {
+			$next = '' === $out ? $sentence : $out . ' ' . $sentence;
+			if ( '' !== $out && str_word_count( $next ) > $words ) {
+				break;
+			}
+			$out = $next;
+		}
+
+		return $out;
 	}
 
 	/** The featured image asset, when it has a file. */

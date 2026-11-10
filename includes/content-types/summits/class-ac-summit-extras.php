@@ -56,8 +56,9 @@ class AC_Summit_Extras {
 		$human_capital = [ 'area' => 'human-resources', 'area_label' => __( 'Human Resources', 'assemble-content' ) ];
 		$supply_chain  = [ 'area' => 'manufacturing', 'area_label' => __( 'Supply Chain', 'assemble-content' ) ];
 		$manufacturing = [ 'area' => 'manufacturing', 'area_label' => __( 'Manufacturing & Safety', 'assemble-content' ) ];
-		$marketing     = [ 'area' => 'marketing', 'area_label' => __( 'Marketing and Communications', 'assemble-content' ) ];
-		$finance       = [ 'area' => 'finance', 'area_label' => __( 'Finance and Legal', 'assemble-content' ) ];
+		$esg_csr       = [ 'area' => 'manufacturing', 'area_label' => __( 'ESG & CSR', 'assemble-content' ) ];
+		$marketing     = [ 'area' => 'marketing', 'area_label' => __( 'Marketing & Communications', 'assemble-content' ) ];
+		$finance       = [ 'area' => 'finance', 'area_label' => __( 'Finance & Legal', 'assemble-content' ) ];
 
 		$extras = [
 			'nasces'  => $supply_chain + [
@@ -70,7 +71,7 @@ class AC_Summit_Extras {
 				'blurb'       => __( 'Procurement, sourcing, supplier strategy, and value creation.', 'assemble-content' ),
 				'logo'        => 'summits/napes-wordmark-color.png',
 			],
-			'nasrs'   => $supply_chain + [
+			'nasrs'   => $esg_csr + [
 				'communities' => [ 'esg-csr' ],
 				'blurb'       => __( 'Sustainability, responsibility, ESG, and measurable progress.', 'assemble-content' ),
 				'logo'        => 'summits/nasrs-wordmark-color.png',
@@ -116,17 +117,17 @@ class AC_Summit_Extras {
 				'logo'        => 'summits/nales-wordmark-color.png',
 			],
 			'bmws'    => $manufacturing + [
-				'communities' => [],
+				'communities' => [ 'manufacturing' ],
 				'blurb'       => __( 'Biomanufacturing operations, quality, capacity, and next-generation production.', 'assemble-content' ),
 				'logo'        => 'summits/bmws-wordmark-color.png',
 			],
 			'mdws'    => $manufacturing + [
-				'communities' => [],
+				'communities' => [ 'manufacturing' ],
 				'blurb'       => __( 'Medical device quality, operations, supply chain, regulatory, and innovation leaders.', 'assemble-content' ),
 				'logo'        => 'summits/mdws-wordmark-color.png',
 			],
 			'pmws'    => $manufacturing + [
-				'communities' => [],
+				'communities' => [ 'manufacturing' ],
 				'blurb'       => __( 'Pharma manufacturing, quality, technology transfer, and operational readiness.', 'assemble-content' ),
 				'logo'        => 'summits/pmws-wordmark-color.png',
 			],
