@@ -226,7 +226,8 @@ const contentTypes = [
         boolean('featured', 'Featured'),
         integer('featuredRank', 'Featured rank', { validations: [{ range: { min: 1, max: 99 } }] }),
         // Standard report
-        entryLinks('mdTakes', 'MD Takes', ['mdTake'], { validations: [{ size: { min: 1 } }] }),
+        // Optional since 2026-11-16 (Cale): benchmark Field Reports have no Story in Brief. An empty list renders nothing.
+        entryLinks('mdTakes', 'MD Takes', ['mdTake']),
         symbol('pickingUpSubhead', 'Picking Up the Story subhead'),
         richText('pickingUpBody', 'Picking Up the Story body'),
         assetLinks('charts', 'Charts'),
@@ -266,7 +267,7 @@ const contentTypes = [
       { fieldId: 'topics', widgetId: 'entryLinksEditor', settings: { helpText: 'One to four topics, chosen from the topics offered in this report’s functional areas.' } },
       { fieldId: 'featured', widgetId: 'boolean', settings: { helpText: 'Promote this report to the front of the homepage stream and the Peer Intelligence carousel. Gating is unaffected — a featured report that a visitor cannot open still shows only its card.' } },
       { fieldId: 'featuredRank', widgetId: 'numberEditor', settings: { helpText: 'Order among featured reports, 1 first. Leave blank and it falls in by date behind the ranked ones.' } },
-      { fieldId: 'mdTakes', widgetId: 'entryLinksEditor', settings: { helpText: 'One or more Story in Brief blocks, in display order.' } },
+      { fieldId: 'mdTakes', widgetId: 'entryLinksEditor', settings: { helpText: 'Story in Brief blocks, in display order. Optional: leave empty for a report with no Story in Brief, such as a benchmark report.' } },
       { fieldId: 'charts', widgetId: 'assetLinksEditor', settings: { helpText: 'Static chart images in narrative order. Use the asset title for the chart name and the asset description for alt text or a source note.' } },
       { fieldId: 'pullquote', widgetId: 'multipleLine', settings: { helpText: 'Anonymous peer quote. Pullquotes from confidential member discussions must be anonymized — no attribution field.' } },
       { fieldId: 'takeawaysStandard', widgetId: 'richTextEditor', settings: { helpText: 'Numbered list of three to six takeaways. Bold each action-oriented lead, then the 3–5 sentence explanation.' } },
