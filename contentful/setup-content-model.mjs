@@ -9,10 +9,13 @@
  * - Idempotent: safe to re-run; existing content types are updated in place.
  * - Creates the content types below: person, community, topicCategory, topic, mdTake,
  *   fieldReport, playbookCallout, playbook, siteFeature, summitLibrary, summitTalk.
- * - Configures the Field Report editor with 4 tabs: Basics, Standard Report,
- *   Newsletter Version, Variations.
+ * - Configures the Field Report editor with 5 tabs: Basics, Standard Report,
+ *   Newsletter Version, Variations, SEO.
  *
- * Usage: node scripts/setup-content-model.mjs
+ * SEO (2.2.0): optional seoTitle, metaDescription and focusKeyword on fieldReport.
+ *
+ * Usage: node --env-file=../../.env.contentful setup-content-model.mjs [--only fieldReport]
+ *   --only applies just the named content types (comma-separated) and leaves the rest alone.
  * Reads CONTENTFUL_SPACE_ID, CONTENTFUL_MANAGEMENT_TOKEN, CONTENTFUL_ENVIRONMENT from .env
  */
 import 'dotenv/config'
@@ -208,6 +211,9 @@ const contentTypes = [
         entryLinks('topics', 'Topics', ['topic']),
         entryLink('author', 'Author', ['person']),
         assetLink('featuredImage', 'Featured image'),
+        // Lives on the report, not the asset: one archive photo carries a different caption on each report.
+        longText('featuredImageCaption', 'Featured image caption'),
+        symbol('featuredImageCredit', 'Featured image credit'),
         checkboxes('publishTo', 'Publish to', PLACES),
         checkboxes('availableTo', 'Who can read it', AUDIENCES),
         date('publishDate', 'Publication date'),
@@ -239,11 +245,17 @@ const contentTypes = [
         // Variations
         longText('takeawaysShort', 'Key Takeaways (Short)'),
         longText('socialCopyOverride', 'Social copy override'),
+        // Search. Optional; blank falls back to the headline and the excerpt.
+        symbol('seoTitle', 'SEO title', { validations: [{ size: { max: 60 } }] }),
+        symbol('metaDescription', 'Meta description', { validations: [{ size: { max: 160 } }] }),
+        symbol('focusKeyword', 'Focus keyword', { validations: [{ size: { max: 80 } }] }),
       ],
     },
     controls: [
       { fieldId: 'slug', widgetId: 'slugEditor', settings: { trackingFieldId: 'headline' } },
       { fieldId: 'sourceLine', widgetId: 'singleLine', settings: { helpText: 'Final formatted source line, e.g. “From the March 2026 AEO Board discussion.”' } },
+      { fieldId: 'featuredImageCaption', widgetId: 'multipleLine', settings: { helpText: '“About this photo”: a short true story about the featured image (about 50 words) that ties it to the report. Leave blank for charts and design-team images.' } },
+      { fieldId: 'featuredImageCredit', widgetId: 'singleLine', settings: { helpText: 'Source line for the featured image, e.g. “Lewis Hine, 1933. National Archives, NAID 532685”. Leave blank for our own charts and images.' } },
       { fieldId: 'functionalAreas', widgetId: 'checkbox', settings: { helpText: 'The Boards this report is about. Practice area, and so colour, comes from these. Who sees the report is set by Publish to, not here.' } },
       { fieldId: 'publishTo', widgetId: 'checkbox', settings: { helpText: 'Where this report appears: the Assemble Site and each Network, Board or Council. Untick a place to take the report off it. A Network only gets what is ticked for it.' } },
       { fieldId: 'availableTo', widgetId: 'checkbox', settings: { helpText: 'Who can read the full report in the places above. Board Chairs count as Board Members; Council Members count as Board Members but never see Board-Chair-only reports. On the Assemble Site, Public readers get the free-read version.' } },
@@ -264,12 +276,16 @@ const contentTypes = [
       { fieldId: 'takeawaysShort', widgetId: 'multipleLine', settings: { helpText: 'Headline-only takeaways (one per line), used for the Council Chair at-a-glance view.' } },
       { fieldId: 'recordingUrl', widgetId: 'urlEditor', settings: { helpText: 'Newsletter-only recording link.' } },
       { fieldId: 'socialCopyOverride', widgetId: 'multipleLine', settings: { helpText: 'Leave blank to use Picking Up the Story as the source for social copy. Enter custom copy only when the report needs a more tailored social treatment.' } },
+      { fieldId: 'seoTitle', widgetId: 'singleLine', settings: { helpText: 'The title search engines show, 60 characters at most (longer ones are cut off in results). Put the focus keyword near the front. Leave blank to use the headline.' } },
+      { fieldId: 'metaDescription', widgetId: 'singleLine', settings: { helpText: 'The summary under the title in search results: about 150 characters, 160 at most. Say what peers found and why it matters, and use the focus keyword once. Leave blank to use the newsletter setup or the opening of Picking Up the Story.' } },
+      { fieldId: 'focusKeyword', widgetId: 'singleLine', settings: { helpText: 'The one search phrase this report should rank for, lowercase, e.g. “employee experience strategy”. Pick from the Keyword Constitution where one fits. Not shown on the page.' } },
     ],
     tabs: [
-      { groupId: 'basics', name: 'Basics', fields: ['internalTitle', 'headline', 'slug', 'sourceLine', 'functionalAreas', 'topics', 'author', 'featuredImage', 'publishTo', 'availableTo', 'publishDate', 'featured', 'featuredRank', 'primaryCommunity', 'additionalCommunities', 'showOn'] },
+      { groupId: 'basics', name: 'Basics', fields: ['internalTitle', 'headline', 'slug', 'sourceLine', 'functionalAreas', 'topics', 'author', 'featuredImage', 'featuredImageCaption', 'featuredImageCredit', 'publishTo', 'availableTo', 'publishDate', 'featured', 'featuredRank', 'primaryCommunity', 'additionalCommunities', 'showOn'] },
       { groupId: 'standardReport', name: 'Standard Report', fields: ['mdTakes', 'pickingUpSubhead', 'pickingUpBody', 'charts', 'pullquote', 'focusSubhead', 'focusBody', 'takeawaysStandard'] },
       { groupId: 'newsletterVersion', name: 'Newsletter Version', fields: ['newsletterSetup', 'newsletterFocus', 'newsletterImage', 'takeawaysNewsletter', 'recordingUrl'] },
       { groupId: 'variations', name: 'Variations', fields: ['takeawaysShort', 'socialCopyOverride'] },
+      { groupId: 'seo', name: 'SEO', fields: ['seoTitle', 'metaDescription', 'focusKeyword'] },
     ],
   },
   {
@@ -554,10 +570,19 @@ async function configureEditorInterface({ id, controls, tabs }) {
 console.log(`Space: ${spaceId}  Environment: ${environmentId}\n`)
 await ensureEnvironment()
 
-for (const ct of contentTypes) {
+// `--only fieldReport,playbook` applies just those types (and leaves the rest of the model alone).
+const onlyArg = process.argv.find((a) => a.startsWith('--only'))
+const only = onlyArg ? (onlyArg.split('=')[1] ?? process.argv[process.argv.indexOf(onlyArg) + 1] ?? '').split(',').filter(Boolean) : null
+const selected = only ? contentTypes.filter((ct) => only.includes(ct.id)) : contentTypes
+if (only && selected.length !== only.length) {
+  throw new Error(`--only names an unknown content type: ${only.filter((id) => !contentTypes.some((ct) => ct.id === id)).join(', ')}`)
+}
+if (only) console.log(`Only: ${only.join(', ')}\n`)
+
+for (const ct of selected) {
   await upsertContentType(ct)
 }
-for (const ct of contentTypes) {
+for (const ct of selected) {
   await configureEditorInterface(ct)
 }
 

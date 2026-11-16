@@ -503,6 +503,25 @@ abstract class AC_Post_Type_Content extends AC_Content_Type {
 		return is_array( $data ) ? $data : null;
 	}
 
+	/**
+	 * The editor's SEO overrides for a synced post: `seoTitle`, `metaDescription`
+	 * and `focusKeyword` from the entry, trimmed, '' when unset (or when the entry's
+	 * type has no such field). Fallbacks (the headline, the excerpt) are the site's
+	 * call, so none are applied here.
+	 *
+	 * @return array{title: string, description: string, keyword: string}
+	 */
+	public static function seo( int $post_id ): array {
+		$entry = self::data( $post_id ) ?? [];
+		$value = static fn( string $field ): string => trim( (string) ( AC_Contentful::field( $entry, $field ) ?? '' ) );
+
+		return [
+			'title'       => $value( 'seoTitle' ),
+			'description' => $value( 'metaDescription' ),
+			'keyword'     => $value( 'focusKeyword' ),
+		];
+	}
+
 	/** Replace a multi-row meta key with one row per unique, non-empty value. */
 	protected static function set_multi_meta( int $post_id, string $key, array $values ): void {
 		delete_post_meta( $post_id, $key );
