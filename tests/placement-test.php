@@ -1,8 +1,8 @@
 <?php
 /**
  * Placement (`publishTo`, `functionalAreas` and their `showOn` / Community
- * fallbacks), post dates, a failed fetch versus an unpublished entry, and
- * webhook de-duplication.
+ * fallbacks), post dates, a failed fetch versus an unpublished entry, and that
+ * the webhook only schedules a run.
  *
  * Runs against a fake Delivery API with one throwaway placed type. Options it
  * touches are restored and everything it creates is deleted at the end.
@@ -204,36 +204,22 @@ try {
 	$ok( 'publish' === get_post_status( $post ) && 'draft' === get_post_status( $post2 ), 'Member Center full sync: HR Network piece kept, Assemble-Site-only piece drafted' );
 	$ok( 'not published to this site' === get_post_meta( $post2, '_ac_drafted_reason', true ), 'drafted reason says why' );
 
-	echo "7. Webhook de-duplication\n";
-	$hook = static function ( string $topic, string $id, int $rev ): WP_REST_Response {
+	echo "7. The webhook only schedules a run (the run itself: changes-test.php)\n";
+	$hook = static function ( string $topic, string $id ): WP_REST_Response {
 		$req = new WP_REST_Request( 'POST', '/assemble/v1/contentful' );
 		$req->set_header( 'X-Contentful-Topic', $topic );
 		$req->set_header( 'Content-Type', 'application/json' );
-		$req->set_body( wp_json_encode( [ 'sys' => [ 'id' => $id, 'type' => 'Entry', 'revision' => $rev, 'contentType' => [ 'sys' => [ 'id' => AC_PT_TYPE ] ] ] ] ) );
+		$req->set_body( wp_json_encode( [ 'sys' => [ 'id' => $id, 'type' => 'Entry', 'contentType' => [ 'sys' => [ 'id' => AC_PT_TYPE ] ] ] ] ) );
 
 		return AC_Contentful_Webhook::handle( $req );
 	};
 
-	$put( $entry( $id1, [ 'publishTo' => [ 'HR Network' ] ], AC_PT_TYPE, 3 ) );
-	$res = $hook( 'ContentManagement.Entry.publish', $id1, 3 );
-	$ok( 200 === $res->get_status() && 'publish' === get_post_status( $post ), 'publish handled' );
-	$res = $hook( 'ContentManagement.Entry.publish', $id1, 3 );
-	$ok( 'duplicate delivery' === ( $res->get_data()['skipped'] ?? '' ), 'the same delivery again: skipped' );
+	wp_clear_scheduled_hook( AC_Contentful_Changes::RUN );
 	$put();
-	$res = $hook( 'ContentManagement.Entry.unpublish', $id1, 3 );
-	$ok( 200 === $res->get_status() && 'draft' === get_post_status( $post ), 'unpublish straight after publish: handled, not dropped' );
-
-	wp_cache_add( $id1, 1, 'ac_webhook', 60 );
-	$res = $hook( 'ContentManagement.Entry.publish', $id1, 4 );
-	$ok( 503 === $res->get_status(), 'entry already syncing: 503 so Contentful retries' );
-	wp_cache_delete( $id1, 'ac_webhook' );
-
-	$GLOBALS['ac_pt']['status'] = 500;
-	$put( $entry( $id1, [ 'publishTo' => [ 'HR Network' ] ], AC_PT_TYPE, 5 ) );
-	$res = $hook( 'ContentManagement.Entry.publish', $id1, 5 );
-	$GLOBALS['ac_pt']['status'] = 200;
-	$res2 = $hook( 'ContentManagement.Entry.publish', $id1, 5 );
-	$ok( 500 === $res->get_status() && 200 === $res2->get_status() && 'publish' === get_post_status( $post ), 'a failed delivery is not remembered: the retry syncs' );
+	$res = $hook( 'ContentManagement.Entry.unpublish', $id1 );
+	$ok( 202 === $res->get_status() && wp_next_scheduled( AC_Contentful_Changes::RUN ), 'answers 202 and schedules a run' );
+	$ok( 'publish' === get_post_status( $post ), 'syncs nothing itself: the post is untouched until the run' );
+	wp_clear_scheduled_hook( AC_Contentful_Changes::RUN );
 } finally {
 	foreach ( get_posts( [ 'post_type' => 'ac_test_placed', 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids' ] ) as $id ) {
 		wp_delete_post( (int) $id, true );

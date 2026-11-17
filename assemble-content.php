@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Assemble Content
  * Description:       The Assemble Content feed. Syncs published content into hidden, gated post types and cached lists: Field Reports, playbooks, communities and Site Features from Contentful, and summits from Executive Platforms' summit API. Webhook-driven, with WP-CLI commands and per-audience rendering.
- * Version:           2.2.0
+ * Version:           2.3.0
  * Requires PHP:      8.0
  * Author:            Assemble
  * Text Domain:       assemble-content
@@ -20,7 +20,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'AC_VERSION', '2.2.0' );
+define( 'AC_VERSION', '2.3.0' );
 define( 'AC_FILE', __FILE__ );
 define( 'AC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AC_URL', plugin_dir_url( __FILE__ ) );
@@ -49,6 +49,7 @@ const AC_CLASSES = [
 	'AC_Compat'                => 'core/class-ac-compat.php',
 	'AC_Contentful'            => 'sources/contentful/class-ac-contentful.php',
 	'AC_Contentful_Webhook'    => 'sources/contentful/class-ac-contentful-webhook.php',
+	'AC_Contentful_Changes'    => 'sources/contentful/class-ac-contentful-changes.php',
 	'AC_Preview'               => 'sources/contentful/class-ac-preview.php',
 	'AC_RichText'              => 'sources/contentful/class-ac-richtext.php',
 	'AC_WP_JSON'               => 'sources/wp-json/class-ac-wp-json.php',
@@ -95,6 +96,7 @@ AC_Types::init();
 AC_Placement::init();
 AC_Bypass::init();
 AC_Contentful_Webhook::init();
+AC_Contentful_Changes::init();
 AC_Preview::init();
 AC_Settings_Page::init();
 AC_Sync_Report::init();
@@ -120,6 +122,7 @@ register_deactivation_hook(
 	__FILE__,
 	static function (): void {
 		wp_clear_scheduled_hook( AC_Summits::CRON );
+		AC_Contentful_Changes::unschedule();
 		flush_rewrite_rules();
 	}
 );

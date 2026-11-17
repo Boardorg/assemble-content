@@ -21,6 +21,12 @@ class AC_CLI {
 	 * [--entry=<id>]
 	 * : Sync one Contentful entry by ID.
 	 *
+	 * [--changes]
+	 * : Apply what changed in Contentful since the last run, as the webhook and the five-minute sweep do, until nothing is left.
+	 *
+	 * [--reset]
+	 * : With --changes: forget the stored sync token and queue, and start over with a full sync.
+	 *
 	 * [--force]
 	 * : Re-render even when the stored revision already matches.
 	 *
@@ -33,8 +39,15 @@ class AC_CLI {
 	 *     wp assemble-content sync --type=fieldReport
 	 *     wp assemble-content sync --entry=fieldreport-aeo-benchmarking-20260708 --force
 	 *     wp assemble-content sync --all --dry-run
+	 *     wp assemble-content sync --changes
 	 */
 	public function sync( array $args, array $assoc ): void {
+		if ( isset( $assoc['changes'] ) ) {
+			$this->sync_changes( isset( $assoc['reset'] ) );
+
+			return;
+		}
+
 		$entry_id = (string) ( $assoc['entry'] ?? '' );
 		$force    = isset( $assoc['force'] );
 		$dry      = isset( $assoc['dry-run'] );
@@ -76,6 +89,30 @@ class AC_CLI {
 		);
 
 		if ( $result['errors'] > 0 ) {
+			WP_CLI::error( $summary );
+		}
+
+		WP_CLI::success( $summary );
+	}
+
+	private function sync_changes( bool $reset ): void {
+		if ( ! AC_Settings::is_configured() ) {
+			WP_CLI::error( 'Contentful is not configured. Set the space ID and delivery token first.' );
+		}
+
+		if ( $reset ) {
+			AC_Contentful_Changes::reset();
+		}
+
+		$report = AC_Contentful_Changes::run();
+
+		foreach ( $report['messages'] as $message ) {
+			WP_CLI::log( '  ' . $message );
+		}
+
+		$summary = sprintf( 'read %d changes, applied %d, synced %d, errors %d, still queued %d', $report['fetched'], $report['processed'], $report['synced'], $report['errors'], $report['queued'] );
+
+		if ( $report['errors'] > 0 ) {
 			WP_CLI::error( $summary );
 		}
 
@@ -153,6 +190,7 @@ class AC_CLI {
 		WP_CLI::log( '  CDA token:    ' . ( $settings['delivery_token'] ? 'set' : '(not set)' ) );
 		WP_CLI::log( '  webhook:      ' . ( $settings['webhook_secret'] ? 'secret set' : 'DISABLED (no secret)' ) );
 		WP_CLI::log( '  webhook URL:  ' . AC_Contentful_Webhook::webhook_url() );
+		WP_CLI::log( '  changes:      ' . AC_Contentful_Changes::summary() );
 		WP_CLI::log( '  data:         ' . ( AC_Migration::is_done() ? 'migrated to 2.0.0 names' : 'NOT MIGRATED — run `wp assemble-content migrate`' ) );
 
 		WP_CLI::log( '' );
