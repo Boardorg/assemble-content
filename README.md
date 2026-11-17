@@ -189,6 +189,8 @@ Settings live in the `AC_*` constants (`AC_SPACE_ID`, `AC_ENVIRONMENT`, `AC_DELI
 
 `contentful/` holds the content-model and setup scripts. They read credentials from environment variables; see `contentful/.env.example` for the names. Every script refuses the `master` environment.
 
+**Webhooks:** each site that syncs gets its own Contentful webhook, made by `setup-wp-webhook.mjs --target=<key>`: `beta`, `assemble-production`, `mc-migration` or `mc-production`. Each target reads its own secret variable, which must equal that site's `AC_WEBHOOK_SECRET` (or `AFR_WEBHOOK_SECRET`). A new production webhook is created inactive; run again with `--activate` when the site is ready. `--dry-run` shows what would change without writing.
+
 ## Tests
 
 Local only (wp-env), against a fake Delivery API; nothing real is fetched or changed:
