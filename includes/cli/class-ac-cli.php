@@ -22,7 +22,7 @@ class AC_CLI {
 	 * : Sync one Contentful entry by ID.
 	 *
 	 * [--changes]
-	 * : Apply what changed in Contentful since the last run, as the webhook and the five-minute sweep do, until nothing is left.
+	 * : Apply what changed in Contentful since the last run, as the webhook and the nightly run do, until nothing is left.
 	 *
 	 * [--reset]
 	 * : With --changes: forget the stored sync token and queue, and start over with a full sync.

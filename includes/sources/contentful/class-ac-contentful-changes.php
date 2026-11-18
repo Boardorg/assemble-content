@@ -5,9 +5,9 @@
  * The webhook only asks for a run. A run reads everything published, unpublished
  * or deleted since the last run from the Sync API, queues it, and works through
  * the queue: a synced entry is re-synced on its own, and anything else (a person,
- * an asset, a community) re-syncs only the synced entries that link to it. Runs
- * also fire every five minutes, so a missed or failed webhook delivery is picked
- * up by the next one, and a burst of publishes is handled in one pass.
+ * an asset, a community) re-syncs only the synced entries that link to it. A
+ * burst of publishes is handled in one pass, and a nightly run picks up anything
+ * a missed or failed webhook delivery left behind.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -17,13 +17,12 @@ class AC_Contentful_Changes {
 	/** Cron hook for a run asked for by the webhook, or a run handing over to the next. */
 	public const RUN = 'ac_contentful_changes';
 
-	/** Cron hook for the five-minute run. */
+	/** Cron hook for the nightly run. */
 	public const SWEEP = 'ac_contentful_changes_sweep';
 
 	/** Option holding the sync token, the queue and the last run's outcome. */
 	public const STATE = 'ac_contentful_changes';
 
-	private const SCHEDULE = 'ac_five_minutes';
 	private const LOCK     = 'ac_contentful_changes_lock';
 	private const LOCK_TTL = 10 * MINUTE_IN_SECONDS;
 
@@ -43,24 +42,20 @@ class AC_Contentful_Changes {
 	private static array $done = [];
 
 	public static function init(): void {
-		add_filter( 'cron_schedules', [ self::class, 'add_schedule' ] ); // phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval -- five minutes is the safety-net cadence.
 		add_action( self::RUN, [ self::class, 'cron' ] );
 		add_action( self::SWEEP, [ self::class, 'cron' ] );
 		add_action( 'init', [ self::class, 'schedule_sweep' ] );
 	}
 
-	public static function add_schedule( array $schedules ): array {
-		$schedules[ self::SCHEDULE ] = [
-			'interval' => 5 * MINUTE_IN_SECONDS,
-			'display'  => __( 'Every five minutes', 'assemble-content' ),
-		];
-
-		return $schedules;
-	}
-
+	/** Daily, at 3am site time. */
 	public static function schedule_sweep(): void {
+		if ( wp_next_scheduled( self::SWEEP ) && 'daily' !== wp_get_schedule( self::SWEEP ) ) {
+			wp_clear_scheduled_hook( self::SWEEP );
+		}
+
 		if ( AC_Settings::is_configured() && ! wp_next_scheduled( self::SWEEP ) ) {
-			wp_schedule_event( time() + MINUTE_IN_SECONDS, self::SCHEDULE, self::SWEEP );
+			$at = new DateTimeImmutable( 'tomorrow 03:00', wp_timezone() );
+			wp_schedule_event( $at->getTimestamp(), 'daily', self::SWEEP );
 		}
 	}
 
@@ -128,7 +123,7 @@ class AC_Contentful_Changes {
 			$state['last_report'] = array_merge( $report, [ 'messages' => array_slice( $report['messages'], -25 ) ] );
 			self::save( $state );
 
-			// Out of time with work left: carry on now. Failures wait a minute, or the next sweep.
+			// Out of time with work left: carry on now. Failures wait a minute; an unreadable Sync API, five.
 			$unfinished = 'more' === $pulled
 				|| count( $state['pending'] ) > count( $retry )
 				|| ( $state['full'] && ! isset( self::$done['full'] ) );
@@ -137,6 +132,8 @@ class AC_Contentful_Changes {
 				self::schedule_run( time() );
 			} elseif ( $retry ) {
 				self::schedule_run( time() + MINUTE_IN_SECONDS );
+			} elseif ( 'error' === $pulled ) {
+				self::schedule_run( time() + 5 * MINUTE_IN_SECONDS );
 			}
 		} finally {
 			self::unlock();

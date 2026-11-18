@@ -119,7 +119,7 @@ The webhook no longer syncs anything while Contentful waits. It checks the secre
 - **A synced entry** (a Field Report, a playbook, a Summit talk) is re-synced on its own, forced, so it also picks up changes to what it links to.
 - **Anything else** (a person, an MD Take, a topic, an asset) re-syncs only the synced entries that link to it, following links up to three steps through entries that aren't synced themselves: asset, person, talk. Option types (the community directory, Site Features) found on the way are re-fetched once. Each entry is synced at most once per run.
 - **Unpublished or deleted:** a synced entry's post is drafted. Links to a deleted person or asset can no longer be looked up, so that queues one full sync, in the background.
-- **Every five minutes** (`ac_contentful_changes_sweep`) the same run fires, so a missed or failed delivery is picked up without anyone noticing it. Nothing changed costs one Sync API request.
+- **Nightly** (`ac_contentful_changes_sweep`, 3am site time) the same run fires, to pick up anything a missed or failed delivery left behind. Nothing changed costs one Sync API request. A run that can't read the Sync API tries again five minutes later.
 - **Limits:** a cron run works for about 40 seconds and hands the rest to an immediate next run. One run at a time (a ten-minute lock). A failed fetch keeps the item queued and tries again a minute later, up to three times. A failed fetch still never drafts a post: only a successful response with no entry means unpublished.
 - **Changing space or environment** (for example `field-report` to `master`) starts over: the token is only good for the one it came from.
 

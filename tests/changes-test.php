@@ -26,6 +26,7 @@ $GLOBALS['ac_ct'] = [
 	'fail'     => [],   // Keyed like links: that lookup answers HTTP 500.
 	'requests' => [],
 	'delta'    => 0,
+	'down'     => false,
 ];
 
 function ac_ct_entry( string $id, string $type, string $title, int $rev = 1 ): array {
@@ -82,6 +83,10 @@ add_filter(
 
 			if ( 'expired' === $token ) {
 				return ac_ct_response( 400, [ 'message' => 'test: bad sync token' ] );
+			}
+
+			if ( ! empty( $t['down'] ) ) {
+				return ac_ct_response( 503, [ 'message' => 'test: Sync API down' ] );
 			}
 
 			// The first full list, page by page.
@@ -334,6 +339,26 @@ try {
 	ac_check( 'one run scheduled, about ten seconds out', 1 === count( $cron ) && (int) array_key_first( $cron ) <= time() + 15 );
 	ac_check( 'no Contentful requests during the webhook', 0 === count( $GLOBALS['ac_ct']['requests'] ) );
 	ac_check( 'wrong secret is refused', 401 === $denied->get_status() );
+
+	WP_CLI::log( '16. The safety-net run is nightly, at 3am site time' );
+	wp_clear_scheduled_hook( AC_Contentful_Changes::SWEEP );
+	wp_schedule_event( time() + 300, 'hourly', AC_Contentful_Changes::SWEEP );
+	AC_Contentful_Changes::schedule_sweep();
+	$sweep = (int) wp_next_scheduled( AC_Contentful_Changes::SWEEP );
+	ac_check( 'an old schedule is replaced with daily', 'daily' === wp_get_schedule( AC_Contentful_Changes::SWEEP ) );
+	ac_check( 'next run is at 3am, within a day', '03:00' === wp_date( 'H:i', $sweep ) && $sweep > time() && $sweep <= time() + DAY_IN_SECONDS );
+
+	WP_CLI::log( '17. A Sync API outage tries again in five minutes' );
+	wp_clear_scheduled_hook( AC_Contentful_Changes::RUN );
+	$state          = AC_Contentful_Changes::state();
+	$saved_token    = $state['token'];
+	$state['token'] = 'down';
+	update_option( AC_Contentful_Changes::STATE, $state, false );
+	$GLOBALS['ac_ct']['down'] = true;
+	$r                        = ac_ct_run();
+	$next                     = (int) wp_next_scheduled( AC_Contentful_Changes::RUN );
+	ac_check( 'error reported, token kept, next run in about five minutes', $r['errors'] > 0 && 'down' === AC_Contentful_Changes::state()['token'] && $next >= time() + 290 && $next <= time() + 310, ac_ct_report( $r ) );
+	$GLOBALS['ac_ct']['down'] = false;
 } finally {
 	foreach ( get_posts( [ 'post_type' => 'ac_test_talk', 'post_status' => 'any', 'numberposts' => 100, 'fields' => 'ids' ] ) as $test_post_id ) {
 		wp_delete_post( $test_post_id, true );
