@@ -39,7 +39,7 @@ includes/
 
 **To add a type:** subclass the storage kind, give it a `defaults()` config (label, source, post type or option, dependencies), put it in its own folder under `content-types/`, and register it in `AC_Types::definitions()` and the classmap in `assemble-content.php`. Syncing, the webhook (for Contentful types), the CLI and the admin screens pick it up from the registry.
 
-`sync --all`, "Sync now" and a webhook dependency change sync every type with `full_sync` on, in registry order (the community directory first, since functional areas are resolved from it). Summits have `full_sync` off: they refresh on their own hourly schedule.
+`sync --all` and "Sync now" sync every type with `full_sync` on, in registry order (the community directory first, since functional areas are resolved from it). Summits have `full_sync` off: they refresh on their own hourly schedule.
 
 ## Upgrading to 2.0.0
 
@@ -84,7 +84,7 @@ Each site declares a channel, and only pieces placed on it sync there (`AC_Place
 | anything else | pieces with that exact place ticked |
 
 - **Setting the channel:** the `AC_SITE_CHANNEL` constant (use this on VIP) or `ac_settings[site_channel]`. The `ac_site_channel` filter can override either, and `ac_on_site` can override the result per entry.
-- **Unticking:** a piece no longer placed on a site is drafted there, with the reason "not published to this site". That happens on the next full sync, or straight away through the webhook.
+- **Unticking:** a piece no longer placed on a site is drafted there, with the reason "not published to this site". That happens on the next full sync, or on the next change run after the webhook.
 - **No channel set:** the site syncs nothing and drafts nothing.
 
 **Places are stored** as terms in a hidden `ac_place` taxonomy on every placed type. `AC_Query::for_places( [ 'HR Network' ] )` lists pieces for a place, and `AC_Query::places( $post_id )` reads them back. Placement only lists. Who may read a body is still `availableTo` and `ac_current_audiences`.
@@ -109,11 +109,21 @@ A piece is filed under:
 
 A date with no time means local midnight. Timestamps are converted properly, so `post_date_gmt` is always right. A future date is clamped to now: Contentful's scheduling decides when a piece goes live, never WordPress.
 
-## Fetch failures and the webhook (1.9.0)
+## Background change sync (2.3.0)
 
-- **A failed fetch leaves the post alone.** A single-entry fetch that fails (timeout, 401, 429, 5xx, a malformed response) no longer drafts the post. The sync reports an error and the webhook answers 500, so Contentful retries. Only a successful response with no entry means unpublished. `AC_Contentful::get_entry_result()` tells the two apart.
-- **De-duplication is per delivery.** The webhook skips a delivery only when it has already handled that exact topic, entry and revision successfully, so a publish quickly followed by an unpublish is never dropped.
-- **One sync per entry at a time.** Concurrent deliveries for the same entry are serialized with an object-cache lock. A busy entry answers 503, which Contentful retries.
+The webhook no longer syncs anything while Contentful waits. It checks the secret, schedules a run (`ac_contentful_changes`, about ten seconds out) and answers 202. A burst of deliveries shares one run. Before 2.3.0 a person or asset publish ran a forced full sync inside the request; on VIP that took about 30 seconds, Contentful's limit, so most of those deliveries timed out and were retried.
+
+`AC_Contentful_Changes` does the work:
+
+- **What changed** comes from Contentful's Sync API, with the token kept in the `ac_contentful_changes` option. The first run reads the full list (about 1,700 items, a few seconds) without queuing it, then runs one forced full sync to start from a known state.
+- **A synced entry** (a Field Report, a playbook, a Summit talk) is re-synced on its own, forced, so it also picks up changes to what it links to.
+- **Anything else** (a person, an MD Take, a topic, an asset) re-syncs only the synced entries that link to it, following links up to three steps through entries that aren't synced themselves: asset, person, talk. Option types (the community directory, Site Features) found on the way are re-fetched once. Each entry is synced at most once per run.
+- **Unpublished or deleted:** a synced entry's post is drafted. Links to a deleted person or asset can no longer be looked up, so that queues one full sync, in the background.
+- **Nightly** (`ac_contentful_changes_sweep`, 3am site time) the same run fires, to pick up anything a missed or failed delivery left behind. Nothing changed costs one Sync API request. A run that can't read the Sync API tries again five minutes later.
+- **Limits:** a cron run works for about 40 seconds and hands the rest to an immediate next run. One run at a time (a ten-minute lock). A failed fetch keeps the item queued and tries again a minute later, up to three times. A failed fetch still never drafts a post: only a successful response with no entry means unpublished.
+- **Changing space or environment** (for example `field-report` to `master`) starts over: the token is only good for the one it came from.
+
+`wp assemble-content sync --changes` runs the same thing now, until done (`--reset` starts over). `wp assemble-content status` shows the last run and what's queued.
 
 ## Topics, practice areas and Member Center groups
 
@@ -156,6 +166,7 @@ wp assemble-content types
 wp assemble-content sync --all [--force] [--dry-run]
 wp assemble-content sync --type=<fieldReport|field_report|community|...> [--force] [--dry-run]
 wp assemble-content sync --entry=<id> [--force] [--dry-run]
+wp assemble-content sync --changes [--reset]
 wp assemble-content matrix
 wp assemble-content audiences
 wp assemble-content preview-link <entry-id> [--days=7] [--view=standard]
@@ -207,9 +218,12 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/test
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/public-full-text-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/playbook-test.php
 npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/type-isolation-test.php
+npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/tests/changes-test.php
 ```
 
 `playbook-test.php` uses a synthetic entry: the registry entry and post type (no REST, no admin UI), the map, chapters, anchors, subtitles and callouts, every view's exact sections with members-only text absent from public and denied (and present in standard), real visitors (anonymous, anonymous `?ac_as=`, a stubbed Board Member, a Public playbook with and without full text), and `the_content` serving only the teaser. `type-isolation-test.php` serves the site's own synced entries back through a fake Delivery API and shows that a playbook sync never drafts a Field Report and a Field Report sync never drafts a playbook: per-type full syncs, a full sync with the other type offline, and the webhook path. Note that `channel-test.php` runs real syncs, so a local playbook that isn't published in Contentful gets drafted by it.
+
+`changes-test.php` runs the background change sync against a fake Sync API: the first full list, a quiet run, an edited talk, a changed person and a changed headshot (only linked talks re-synced), a burst (each talk once), unpublishing (drafted), a deleted dependency (one full sync), retries and giving up, a rejected token, switching environment, the lock, and the webhook (202, one run scheduled, no Contentful requests, wrong secret refused).
 
 `channel-test.php` runs real syncs with the channel forced, covering: set, unset (nothing drafted), an unticked entry through the webhook path (drafted), and a channel with no reports (everything drafted). It restores the reports afterwards. `groups-topics-test.php` checks the group terms, topic and practice-area meta against each entry, `for_groups()`, `ac_topic_taxonomy` (existing terms only) and `ac_synced`.
 

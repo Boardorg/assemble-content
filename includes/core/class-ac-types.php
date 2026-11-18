@@ -180,7 +180,7 @@ class AC_Types {
 		return array_values( array_unique( array_map( static fn( $type ) => $type->post_type(), self::post_type_objects() ) ) );
 	}
 
-	/** @return string[] Source types whose changes trigger a full re-sync. */
+	/** @return string[] Source types other types read, whose deletion triggers a full re-sync. */
 	public static function dependency_types(): array {
 		$deps = [];
 		foreach ( self::types() as $type ) {

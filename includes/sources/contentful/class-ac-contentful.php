@@ -245,6 +245,124 @@ class AC_Contentful extends AC_Source {
 		return [ 'items' => $items, 'error' => '', 'total' => (int) ( $body['total'] ?? count( $items ) ) ];
 	}
 
+	/**
+	 * One page of the Sync API: everything published, unpublished or deleted since
+	 * the token, or with no token, everything there is. Items are not link-resolved.
+	 *
+	 * @return array{items: array<int,array>, token: string, done: bool, expired: bool, error: string}
+	 */
+	public static function sync_page( string $token ): array {
+		$result = [ 'items' => [], 'token' => $token, 'done' => false, 'expired' => false, 'error' => '' ];
+		$body   = self::request( 'sync', $token !== '' ? [ 'sync_token' => $token ] : [ 'initial' => 'true' ] );
+
+		if ( $body['error'] !== '' ) {
+			// A token the API no longer accepts can't be retried, only replaced.
+			$result['expired'] = $token !== '' && in_array( $body['code'], [ 400, 404, 422 ], true );
+			$result['error']   = $body['error'];
+
+			return $result;
+		}
+
+		$next = (string) ( $body['data']['nextSyncUrl'] ?? $body['data']['nextPageUrl'] ?? '' );
+		parse_str( (string) wp_parse_url( $next, PHP_URL_QUERY ), $args );
+
+		if ( empty( $args['sync_token'] ) || ! is_array( $body['data']['items'] ?? null ) ) {
+			$result['error'] = 'Unexpected response shape from the Contentful Sync API.';
+
+			return $result;
+		}
+
+		$result['items'] = $body['data']['items'];
+		$result['token'] = (string) $args['sync_token'];
+		$result['done']  = isset( $body['data']['nextSyncUrl'] );
+
+		return $result;
+	}
+
+	/**
+	 * The published entries that link to an entry or an asset.
+	 *
+	 * @param string $link 'entry' or 'asset'.
+	 * @return array{entries: array<int,array{id:string,type:string}>, error: string}
+	 */
+	public static function linking_entries( string $link, string $id ): array {
+		// An empty ID matches every entry.
+		if ( $id === '' ) {
+			return [ 'entries' => [], 'error' => 'no ID given' ];
+		}
+
+		$body = self::request(
+			'entries',
+			[
+				'asset' === $link ? 'links_to_asset' : 'links_to_entry' => $id,
+				'include' => 0,
+				'limit'   => 1000,
+				'select'  => 'sys',
+			]
+		);
+
+		if ( $body['error'] !== '' ) {
+			return [ 'entries' => [], 'error' => $body['error'] ];
+		}
+
+		$entries = [];
+		foreach ( (array) ( $body['data']['items'] ?? [] ) as $item ) {
+			$entries[] = [
+				'id'   => (string) ( $item['sys']['id'] ?? '' ),
+				'type' => (string) ( $item['sys']['contentType']['sys']['id'] ?? '' ),
+			];
+		}
+
+		return [ 'entries' => array_values( array_filter( $entries, static fn( $e ) => $e['id'] !== '' ) ), 'error' => '' ];
+	}
+
+	/**
+	 * A GET against the Delivery API for this space and environment.
+	 *
+	 * @return array{code: int, data: array, error: string}
+	 */
+	private static function request( string $path, array $query ): array {
+		$settings = AC_Settings::all();
+
+		if ( $settings['space_id'] === '' || $settings['delivery_token'] === '' ) {
+			return [ 'code' => 0, 'data' => [], 'error' => 'Contentful space ID or delivery token is not configured.' ];
+		}
+
+		$url = sprintf(
+			'%s/spaces/%s/environments/%s/%s',
+			self::BASE,
+			rawurlencode( $settings['space_id'] ),
+			rawurlencode( $settings['environment'] ),
+			$path
+		);
+
+		$response = wp_remote_get(
+			add_query_arg( array_map( 'strval', $query ), $url ),
+			[
+				'timeout' => self::TIMEOUT,
+				'headers' => [
+					'Authorization' => 'Bearer ' . $settings['delivery_token'],
+					'Accept'        => 'application/json',
+				],
+			]
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return [ 'code' => 0, 'data' => [], 'error' => 'Request failed: ' . $response->get_error_message() ];
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$data = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+
+		if ( $code !== 200 || ! is_array( $data ) ) {
+			$detail = is_array( $data ) ? ( $data['message'] ?? '' ) : '';
+
+			return [ 'code' => $code, 'data' => [], 'error' => trim( sprintf( 'Contentful returned HTTP %d. %s', $code, (string) $detail ) ) ];
+		}
+
+		return [ 'code' => $code, 'data' => $data, 'error' => '' ];
+	}
+
 	/** Build id => payload lookups for the includes block. */
 	private static function index_includes( array $body ): array {
 		$index = [ 'Entry' => [], 'Asset' => [] ];
