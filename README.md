@@ -232,3 +232,7 @@ npx @wordpress/env run cli wp eval-file wp-content/plugins/assemble-content/test
 ## Deploys
 
 Pushes to `main` deploy to the WP Engine beta (`assemblebeta`) via GitHub Actions. Production deploys are manual and need a reviewer's approval.
+
+## Member resources (2.4.0)
+
+`fieldReport.memberResources` (Rich Text: paragraphs, lists, links) holds links and notes for members: decks, recordings, articles shared on the call. It renders after Key Takeaways, in the standard and council views only, and only when `AC_Audience::sees_member_resources()` is true: the visitor is a Board Member, Board Chair or Council Chair (`AC_Audience::MEMBER_RESOURCE_AUDIENCES`, filter `ac_member_resource_audiences`). Network Members, free accounts and the public never receive it: the section is left out of the view model, not hidden with CSS. The gate bypass never opens it. Administrators see it unless previewing an audience with `?ac_as=`. It is never used for excerpts, social copy, the newsletter version or the public full-text view.

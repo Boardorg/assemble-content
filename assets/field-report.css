@@ -280,6 +280,26 @@
 	text-align: center;
 }
 
+/* ------------------------------------------------------- member resources */
+
+/* Links and notes for Board Members and above (the renderer only adds it for them). */
+.ac-member-resources {
+	max-width: var(--max-prose);
+	margin: var(--s-6) 0 0;
+	padding: var(--s-4) var(--s-5);
+	border-left: 3px solid var(--ac-accent);
+	background: var(--ink-05, #f6f6f4);
+}
+
+.ac-member-resources ul,
+.ac-member-resources ol {
+	padding-left: var(--s-5);
+}
+
+.ac-member-resources a {
+	color: var(--ac-accent);
+}
+
 /* -------------------------------------------------------------- takeaways */
 
 .ac-takeaways,

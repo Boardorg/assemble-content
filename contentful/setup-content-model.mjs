@@ -85,6 +85,12 @@ const TAKEAWAY_RT_VALIDATIONS = [
   { enabledNodeTypes: ['ordered-list', 'list-item'], message: 'Takeaways are a numbered list.' },
 ]
 
+// Member resources: free text, bullets and links after the takeaways. Shown only to Board Members and above.
+const MEMBER_RESOURCES_RT_VALIDATIONS = [
+  { enabledMarks: ['bold', 'italic'], message: 'Only bold and italic are allowed in member resources.' },
+  { enabledNodeTypes: ['unordered-list', 'ordered-list', 'list-item', 'hyperlink'], message: 'Use paragraphs, lists and links.' },
+]
+
 // A playbook body: chapters (H2), subsections (H3), lists, quotes, links, and
 // Playbook Callout embeds. No H1 (the title is the H1), no tables or images inline.
 // Kinds of box a writer can embed in a playbook body.
@@ -235,6 +241,7 @@ const contentTypes = [
         symbol('focusSubhead', 'Focus of the Discussion subhead'),
         richText('focusBody', 'Focus of the Discussion body'),
         richText('takeawaysStandard', 'Key Takeaways (Standard)', { validations: TAKEAWAY_RT_VALIDATIONS }),
+        richText('memberResources', 'Member resources (Board Members and above only)', { validations: MEMBER_RESOURCES_RT_VALIDATIONS }),
         // Newsletter version
         longText('newsletterSetup', 'Newsletter setup'),
         richText('newsletterFocus', 'Newsletter focus'),
@@ -271,6 +278,7 @@ const contentTypes = [
       { fieldId: 'charts', widgetId: 'assetLinksEditor', settings: { helpText: 'Static chart images in narrative order. Use the asset title for the chart name and the asset description for alt text or a source note.' } },
       { fieldId: 'pullquote', widgetId: 'multipleLine', settings: { helpText: 'Anonymous peer quote. Pullquotes from confidential member discussions must be anonymized — no attribution field.' } },
       { fieldId: 'takeawaysStandard', widgetId: 'richTextEditor', settings: { helpText: 'Numbered list of three to six takeaways. Bold each action-oriented lead, then the 3–5 sentence explanation.' } },
+      { fieldId: 'memberResources', widgetId: 'richTextEditor', settings: { helpText: 'Optional. Links, decks, recordings and notes for members: paragraphs, bullets and links. Shown after the takeaways ONLY to Board Members, Board Chairs and Council Chairs. Never shown to Network Members, free accounts or the public, and never used in excerpts, social copy or the newsletter.' } },
       { fieldId: 'newsletterSetup', widgetId: 'multipleLine', settings: { helpText: 'Compressed Picking Up the Story for the newsletter.' } },
       { fieldId: 'newsletterImage', widgetId: 'assetLinkEditor', settings: { helpText: 'Single image for the newsletter — typically one of the charts already included in the standard Field Report.' } },
       { fieldId: 'takeawaysNewsletter', widgetId: 'richTextEditor', settings: { helpText: 'Numbered list of four compressed takeaways — bold lead, then no more than two sentences.' } },
@@ -283,7 +291,7 @@ const contentTypes = [
     ],
     tabs: [
       { groupId: 'basics', name: 'Basics', fields: ['internalTitle', 'headline', 'slug', 'sourceLine', 'functionalAreas', 'topics', 'author', 'featuredImage', 'featuredImageCaption', 'featuredImageCredit', 'publishTo', 'availableTo', 'publishDate', 'featured', 'featuredRank', 'primaryCommunity', 'additionalCommunities', 'showOn'] },
-      { groupId: 'standardReport', name: 'Standard Report', fields: ['mdTakes', 'pickingUpSubhead', 'pickingUpBody', 'charts', 'pullquote', 'focusSubhead', 'focusBody', 'takeawaysStandard'] },
+      { groupId: 'standardReport', name: 'Standard Report', fields: ['mdTakes', 'pickingUpSubhead', 'pickingUpBody', 'charts', 'pullquote', 'focusSubhead', 'focusBody', 'takeawaysStandard', 'memberResources'] },
       { groupId: 'newsletterVersion', name: 'Newsletter Version', fields: ['newsletterSetup', 'newsletterFocus', 'newsletterImage', 'takeawaysNewsletter', 'recordingUrl'] },
       { groupId: 'variations', name: 'Variations', fields: ['takeawaysShort', 'socialCopyOverride'] },
       { groupId: 'seo', name: 'SEO', fields: ['seoTitle', 'metaDescription', 'focusKeyword'] },
