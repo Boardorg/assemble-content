@@ -48,9 +48,9 @@ class AC_Field_Report_Renderer {
 	 * view gets the source line and the gate.
 	 */
 	private const VIEW_SECTIONS = [
-		AC_Audience::VIEW_STANDARD => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'image_note', 'source_line', 'byline', 'story_in_brief', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'community', 'author', 'engagement' ],
+		AC_Audience::VIEW_STANDARD => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'image_note', 'source_line', 'byline', 'story_in_brief', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'member_resources', 'community', 'author', 'engagement' ],
 		AC_Audience::VIEW_DELEGATE => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'image_note', 'source_line', 'byline', 'note', 'story_in_brief', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'community', 'author', 'engagement' ],
-		AC_Audience::VIEW_COUNCIL  => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'image_note', 'source_line', 'byline', 'note', 'story_in_brief', 'glance', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'community', 'author', 'engagement' ],
+		AC_Audience::VIEW_COUNCIL  => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'image_note', 'source_line', 'byline', 'note', 'story_in_brief', 'glance', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'member_resources', 'community', 'author', 'engagement' ],
 		AC_Audience::VIEW_PUBLIC   => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'image_note', 'attribution', 'setup', 'join' ],
 		AC_Audience::VIEW_DENIED   => [ 'headline', 'kicker', 'topics', 'dek', 'date', 'image', 'image_note', 'source_line', 'gate' ],
 	];
@@ -179,6 +179,8 @@ class AC_Field_Report_Renderer {
 	 *   charts         [ { asset, url, caption, alt } ]
 	 *   focus          { label, subhead, html }
 	 *   takeaways      { label, html }
+	 *   member_resources { label, html } (standard and council views, and only for
+	 *                  AC_Audience::sees_member_resources(): Board Members and above)
 	 *   community      { name, boilerplate }
 	 *   author         person, with bio
 	 *   engagement     [ block ] (see AC_Engagement::data())
@@ -317,6 +319,7 @@ class AC_Field_Report_Renderer {
 			'charts'         => self::chart_data( $entry ),
 			'focus'          => self::richtext_section( 'Focus of the Discussion', 'focusSubhead', 'focusBody', $entry ),
 			'takeaways'      => self::takeaways_data( $entry ),
+			'member_resources' => AC_Audience::sees_member_resources() ? self::member_resources_data( $entry ) : null,
 			'community'      => self::community_about( $entry ),
 			'author'         => self::author_data( $entry ),
 			'engagement'     => $post_id ? AC_Engagement::data( $post_id, $entry, $view ) : null,
@@ -593,6 +596,13 @@ class AC_Field_Report_Renderer {
 		$html = AC_RichText::to_html( AC_Contentful::field( $entry, 'takeawaysStandard' ) );
 
 		return $html === '' ? null : [ 'label' => 'Key Takeaways', 'html' => $html ];
+	}
+
+	/** Member resources: links and notes for Board Members and above. The caller checks the audience. */
+	private static function member_resources_data( array $entry ): ?array {
+		$html = AC_RichText::to_html( AC_Contentful::field( $entry, 'memberResources' ) );
+
+		return $html === '' ? null : [ 'label' => 'Member resources', 'html' => $html ];
 	}
 
 	/** "About {Community} and Assemble", when the community has boilerplate. */
@@ -892,13 +902,16 @@ class AC_Field_Report_Renderer {
 			. '</figcaption></figure>';
 	}
 
-	/** Picking Up the Story, pullquote, charts, Focus, Key Takeaways. */
+	/** Picking Up the Story, pullquote, charts, Focus, Key Takeaways, then Member resources when the view model has them. */
 	private static function body_sections( array $s ): string {
 		return self::labelled_richtext( $s['picking_up'] ?? null )
 			. ( isset( $s['pullquote'] ) ? '<p class="ac-lead-quote">' . esc_html( self::quoted( $s['pullquote'] ) ) . '</p>' : '' )
 			. self::charts( $s )
 			. self::labelled_richtext( $s['focus'] ?? null )
-			. self::takeaways( $s );
+			. self::takeaways( $s )
+			. ( isset( $s['member_resources'] )
+				? '<section class="ac-member-resources">' . self::label( $s['member_resources']['label'] ) . $s['member_resources']['html'] . '</section>'
+				: '' );
 	}
 
 	/** Label, then the authored subhead in Spectral italic, then the body. */

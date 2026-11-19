@@ -54,7 +54,7 @@ function ac_vm_gated_phrases( array $entry ): array {
 	return $phrases;
 }
 
-$ac_gated = [ 'byline', 'note', 'story_in_brief', 'glance', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'community', 'author', 'engagement' ];
+$ac_gated = [ 'byline', 'note', 'story_in_brief', 'glance', 'picking_up', 'pullquote', 'charts', 'focus', 'takeaways', 'member_resources', 'community', 'author', 'engagement' ];
 $ac_views = [ AC_Audience::VIEW_STANDARD, AC_Audience::VIEW_COUNCIL, AC_Audience::VIEW_DELEGATE, AC_Audience::VIEW_PUBLIC, AC_Audience::VIEW_DENIED ];
 $ac_ids   = get_posts( [ 'post_type' => AC_Field_Report_Type::POST_TYPE, 'post_status' => 'publish', 'numberposts' => -1, 'fields' => 'ids' ] );
 $ac_mode  = get_option( AC_Bypass::OPTION_MODE, null );

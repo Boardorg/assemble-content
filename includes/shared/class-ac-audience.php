@@ -23,6 +23,13 @@ class AC_Audience {
 
 	private const PREVIEW_PARAM = 'ac_as';
 
+	/**
+	 * Who sees a report's Member resources (Contentful `memberResources`): Board
+	 * Members and above. Never Network Members, free accounts or the public.
+	 * Filter: `ac_member_resource_audiences`.
+	 */
+	public const MEMBER_RESOURCE_AUDIENCES = [ 'Board Member', 'Board Chair', 'Council Chair' ];
+
 	/** Audiences the current visitor belongs to. */
 	public static function current_audiences(): array {
 		// An explicit preview request wins over everything, including the bypass,
@@ -42,6 +49,11 @@ class AC_Audience {
 			return AC_Settings::audiences();
 		}
 
+		return self::member_audiences();
+	}
+
+	/** The visitor's real audiences: their roles, then the `ac_current_audiences` filter. No preview, bypass or admin shortcut. */
+	private static function member_audiences(): array {
 		$audiences = [ 'Public' ];
 		$user      = wp_get_current_user();
 
@@ -61,6 +73,34 @@ class AC_Audience {
 		 * @param string[] $audiences
 		 */
 		return array_values( array_unique( (array) apply_filters( 'ac_current_audiences', $audiences ) ) );
+	}
+
+	/**
+	 * May the current visitor see a report's Member resources?
+	 *
+	 * Stricter than the report itself: the gate bypass never opens it (it is for
+	 * reviewing the site, and these links are for members). Administrators see
+	 * it, except while previewing an audience, when the previewed audience decides.
+	 */
+	public static function sees_member_resources(): bool {
+		$preview = self::preview_audience();
+
+		if ( $preview !== null ) {
+			$mine = [ $preview ];
+		} elseif ( current_user_can( 'manage_options' ) ) {
+			return true;
+		} else {
+			$mine = self::member_audiences();
+		}
+
+		/**
+		 * Filter which audiences see Member resources.
+		 *
+		 * @param string[] $audiences Default MEMBER_RESOURCE_AUDIENCES.
+		 */
+		$allowed = (array) apply_filters( 'ac_member_resource_audiences', self::MEMBER_RESOURCE_AUDIENCES );
+
+		return (bool) array_intersect( $mine, $allowed );
 	}
 
 	/**
