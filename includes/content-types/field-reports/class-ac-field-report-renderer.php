@@ -602,7 +602,7 @@ class AC_Field_Report_Renderer {
 	private static function member_resources_data( array $entry ): ?array {
 		$html = AC_RichText::to_html( AC_Contentful::field( $entry, 'memberResources' ) );
 
-		return $html === '' ? null : [ 'label' => 'Member resources', 'html' => $html ];
+		return $html === '' ? null : [ 'label' => 'Resources', 'html' => $html ];
 	}
 
 	/** "About {Community} and Assemble", when the community has boilerplate. */
