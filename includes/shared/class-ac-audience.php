@@ -78,11 +78,18 @@ class AC_Audience {
 	/**
 	 * May the current visitor see a report's Member resources?
 	 *
-	 * Stricter than the report itself: the gate bypass never opens it (it is for
-	 * reviewing the site, and these links are for members). Administrators see
-	 * it, except while previewing an audience, when the previewed audience decides.
+	 * Only on the Member Center (site channel 'Member Center'), never on the public
+	 * website. There, stricter than the report itself: the gate bypass never opens it
+	 * (it is for reviewing the site, and these links are for members). Administrators
+	 * see it, except while previewing an audience, when the previewed audience decides.
 	 */
 	public static function sees_member_resources(): bool {
+		// Only the Member Center (which also hosts the Networks) ever shows Resources. The public
+		// website serves the public and subscribers, so it never does, for anyone, admins included.
+		if ( AC_Settings::site_channel() !== 'Member Center' ) {
+			return false;
+		}
+
 		$preview = self::preview_audience();
 
 		if ( $preview !== null ) {
