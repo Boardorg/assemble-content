@@ -219,6 +219,14 @@ wp assemble-content summits refresh
 wp assemble-content status
 wp assemble-content types
 wp assemble-content audiences</pre>
+
+			<?php
+			/**
+			 * After the Sync section: a site's own sections. A section with settings
+			 * renders its own form, since this page's form saves only `ac_settings`.
+			 */
+			do_action( 'ac_settings_page_after' );
+			?>
 		</div>
 		<?php
 	}
